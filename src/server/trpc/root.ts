@@ -15,6 +15,7 @@ import { tasksRouter }        from './routers/tasks'
 import { onboardingRouter }   from './routers/onboarding'
 import { notificationsRouter }from './routers/notifications'
 import { usersRouter }        from './routers/users'
+import { integracoesRouter }  from './routers/integracoes'
 
 export const appRouter = createTRPCRouter({
   dashboard:     dashboardRouter,
@@ -28,6 +29,7 @@ export const appRouter = createTRPCRouter({
   onboarding:    onboardingRouter,
   notifications: notificationsRouter,
   users:         usersRouter,
+  integracoes:   integracoesRouter,
 })
 
 // Tipo exportado para uso no cliente (type-safe end-to-end)

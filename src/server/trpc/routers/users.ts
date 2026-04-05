@@ -5,6 +5,18 @@ import { UuidSchema } from '@/lib/validators/shared.schema'
 
 export const usersRouter = createTRPCRouter({
 
+  // Listar todos os papéis disponíveis (para selects de convite/edição)
+  listRoles: protectedProcedure
+    .query(async ({ ctx }) => {
+      const { data, error } = await ctx.supabase
+        .from('roles')
+        .select('id, name, display_name')
+        .order('display_name')
+
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
+      return data ?? []
+    }),
+
   // Todos os usuários ativos (para selects de responsável)
   list: protectedProcedure
     .query(async ({ ctx }) => {
