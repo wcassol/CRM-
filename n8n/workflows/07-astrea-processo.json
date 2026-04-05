@@ -1,0 +1,192 @@
+{
+  "name": "07 · Criação de Processo no Astrea",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "astrea" }, { "name": "onboarding" }],
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000001",
+      "name": "Webhook Enviar ao Astrea",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crm-astrea-processo",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "astrea-processo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Disparado pelo CRM quando todos os itens obrigatórios do onboarding são concluídos (RN-06)"
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000002",
+      "name": "Extrair Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "e1", "name": "lead_id",              "value": "={{ $json.body?.lead_id ?? $json.lead_id }}", "type": "string" },
+            { "id": "e2", "name": "nome",                 "value": "={{ $json.body?.nome ?? $json.nome }}", "type": "string" },
+            { "id": "e3", "name": "cpf",                  "value": "={{ $json.body?.cpf ?? $json.cpf }}", "type": "string" },
+            { "id": "e4", "name": "email",                "value": "={{ $json.body?.email ?? $json.email }}", "type": "string" },
+            { "id": "e5", "name": "telefone",             "value": "={{ $json.body?.telefone ?? $json.telefone }}", "type": "string" },
+            { "id": "e6", "name": "area_juridica",        "value": "={{ $json.body?.area_juridica ?? $json.area_juridica }}", "type": "string" },
+            { "id": "e7", "name": "descricao_caso",       "value": "={{ $json.body?.descricao_caso ?? $json.descricao_caso }}", "type": "string" },
+            { "id": "e8", "name": "responsavel_juridico", "value": "={{ $json.body?.responsavel_juridico ?? $json.responsavel_juridico }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000003",
+      "name": "Buscar/Criar Cliente Astrea",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.ASTREA_BASE_URL }}/clientes?cpf={{ $json.cpf?.replace(/\\D/g,'') }}&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "Bearer {{ $env.ASTREA_API_TOKEN }}" }]
+        },
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000004",
+      "name": "Cliente Astrea existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [{ "leftValue": "={{ $json.data?.length }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000005",
+      "name": "ID Cliente Existente",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 200],
+      "parameters": {
+        "assignments": {
+          "assignments": [{ "id": "ce1", "name": "astrea_cliente_id", "value": "={{ $json.data[0].id }}", "type": "string" }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000006",
+      "name": "Criar Cliente Astrea",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ASTREA_BASE_URL }}/clientes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ASTREA_API_TOKEN }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ nome: $('Extrair Payload').first().json.nome, cpf: $('Extrair Payload').first().json.cpf?.replace(/\\D/g,''), email: $('Extrair Payload').first().json.email, telefone: $('Extrair Payload').first().json.telefone?.replace(/\\D/g,'') }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000007",
+      "name": "Criar Processo Astrea",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ASTREA_BASE_URL }}/processos",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ASTREA_API_TOKEN }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ titulo: `${$('Extrair Payload').first().json.area_juridica?.toUpperCase()} - ${$('Extrair Payload').first().json.nome}`, descricao: $('Extrair Payload').first().json.descricao_caso ?? 'Caso jurídico.', area: $('Extrair Payload').first().json.area_juridica, cliente_id: $('ID Cliente Existente').first()?.json.astrea_cliente_id ?? $('Criar Cliente Astrea').first()?.json.id, referencia: `crm:${$('Extrair Payload').first().json.lead_id}`, status: 'ativo', urgente: false }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000008",
+      "name": "Salvar Referência no CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1560, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL }}/api/trpc/leads.update",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ json: { id: $('Extrair Payload').first().json.lead_id, referencia_astrea: $json.id, data_envio_astrea: new Date().toISOString() } }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000009",
+      "name": "Avisar Cliente WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1780, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ZAPCONNECTA_API_URL }}/send-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPCONNECTA_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ phone: $('Extrair Payload').first().json.telefone, message: `Olá ${$('Extrair Payload').first().json.nome?.split(' ')[0]}! ⚖️\\n\\nÓtima notícia! Seu caso foi registrado em nosso sistema jurídico e já está sendo acompanhado pela nossa equipe.\\n\\nEm breve seu advogado responsável entrará em contato com as próximas informações.\\n\\nObrigado pela confiança! 🙏`, instance_id: $env.ZAPCONNECTA_INSTANCE_ID }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000010",
+      "name": "Responder CRM",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, astrea_processo_id: $('Criar Processo Astrea').first().json.id }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Enviar ao Astrea": { "main": [[{ "node": "Extrair Payload",           "type": "main", "index": 0 }]] },
+    "Extrair Payload":          { "main": [[{ "node": "Buscar/Criar Cliente Astrea","type": "main", "index": 0 }]] },
+    "Buscar/Criar Cliente Astrea": { "main": [[{ "node": "Cliente Astrea existe?", "type": "main", "index": 0 }]] },
+    "Cliente Astrea existe?": {
+      "main": [
+        [{ "node": "ID Cliente Existente", "type": "main", "index": 0 }],
+        [{ "node": "Criar Cliente Astrea", "type": "main", "index": 0 }]
+      ]
+    },
+    "ID Cliente Existente":     { "main": [[{ "node": "Criar Processo Astrea",    "type": "main", "index": 0 }]] },
+    "Criar Cliente Astrea":     { "main": [[{ "node": "Criar Processo Astrea",    "type": "main", "index": 0 }]] },
+    "Criar Processo Astrea":    { "main": [[{ "node": "Salvar Referência no CRM", "type": "main", "index": 0 }]] },
+    "Salvar Referência no CRM": { "main": [[{ "node": "Avisar Cliente WhatsApp",  "type": "main", "index": 0 }]] },
+    "Avisar Cliente WhatsApp":  { "main": [[{ "node": "Responder CRM",            "type": "main", "index": 0 }]] }
+  }
+}

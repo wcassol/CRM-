@@ -1,0 +1,190 @@
+{
+  "name": "04 · Criar Cobrança no Asaas",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "financeiro" }, { "name": "asaas" }],
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000001",
+      "name": "Webhook Criar Cobrança",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crm-criar-cobranca",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "criar-cobranca",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Chamado pelo CRM quando financeiro emite uma cobrança"
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000002",
+      "name": "Validar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body ?? $input.first().json;\nconst required = ['lead_id', 'charge_id', 'valor', 'vencimento', 'nome', 'cpf_cnpj'];\nfor (const field of required) {\n  if (!b[field]) throw new Error(`Campo obrigatório faltando: ${field}`);\n}\nreturn [{ json: b }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000003",
+      "name": "Buscar/Criar Cliente Asaas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.ASAAS_BASE_URL }}/customers?cpfCnpj={{ $json.cpf_cnpj.replace(/\\D/g,'') }}&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "access_token", "value": "={{ $env.ASAAS_API_KEY }}" }]
+        },
+        "options": { "timeout": 10000 }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Cliente já existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [{ "leftValue": "={{ $json.totalCount }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000005",
+      "name": "Usar Cliente Existente",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 200],
+      "parameters": {
+        "assignments": {
+          "assignments": [{ "id": "c1", "name": "customer_id", "value": "={{ $json.data[0].id }}", "type": "string" }]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000006",
+      "name": "Criar Cliente Asaas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ASAAS_BASE_URL }}/customers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{ $env.ASAAS_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ name: $('Validar Payload').first().json.nome, cpfCnpj: $('Validar Payload').first().json.cpf_cnpj.replace(/\\D/g,''), email: $('Validar Payload').first().json.email ?? undefined, mobilePhone: $('Validar Payload').first().json.telefone?.replace(/\\D/g,'') ?? undefined }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000007",
+      "name": "Merge Customer ID",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1340, 300],
+      "parameters": { "mode": "chooseBranch", "chooseBranch": { "mode": "waitForAll", "output": "empty" } }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000008",
+      "name": "Criar Cobrança Asaas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1560, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ASAAS_BASE_URL }}/payments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{ $env.ASAAS_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ customer: $('Usar Cliente Existente').first()?.json.customer_id ?? $('Criar Cliente Asaas').first()?.json.id, billingType: 'UNDEFINED', value: $('Validar Payload').first().json.valor, dueDate: $('Validar Payload').first().json.vencimento, description: $('Validar Payload').first().json.descricao ?? 'Honorários advocatícios', externalReference: $('Validar Payload').first().json.lead_id }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000009",
+      "name": "Atualizar Cobrança no CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1780, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL }}/api/trpc/charges.update",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ json: { id: $('Validar Payload').first().json.charge_id, asaas_id: $json.id, link_pagamento: $json.invoiceUrl, status: 'pendente' } }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000010",
+      "name": "Enviar Link Pagamento WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ZAPCONNECTA_API_URL }}/send-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPCONNECTA_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ phone: $('Validar Payload').first().json.telefone, message: `Olá! 💰\\n\\nSua cobrança de honorários foi gerada:\\n\\n💵 Valor: R$ ${Number($('Validar Payload').first().json.valor).toFixed(2)}\\n📅 Vencimento: ${new Date($('Validar Payload').first().json.vencimento).toLocaleDateString('pt-BR')}\\n\\nPague via PIX, boleto ou cartão:\\n${$('Criar Cobrança Asaas').first().json.invoiceUrl}\\n\\nQualquer dúvida, estamos à disposição! ✅`, instance_id: $env.ZAPCONNECTA_INSTANCE_ID }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000011",
+      "name": "Responder CRM",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2220, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, asaas_id: $('Criar Cobrança Asaas').first().json.id, invoice_url: $('Criar Cobrança Asaas').first().json.invoiceUrl }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Criar Cobrança":   { "main": [[{ "node": "Validar Payload",                "type": "main", "index": 0 }]] },
+    "Validar Payload":          { "main": [[{ "node": "Buscar/Criar Cliente Asaas",     "type": "main", "index": 0 }]] },
+    "Buscar/Criar Cliente Asaas": { "main": [[{ "node": "Cliente já existe?",           "type": "main", "index": 0 }]] },
+    "Cliente já existe?": {
+      "main": [
+        [{ "node": "Usar Cliente Existente", "type": "main", "index": 0 }],
+        [{ "node": "Criar Cliente Asaas",    "type": "main", "index": 0 }]
+      ]
+    },
+    "Usar Cliente Existente":   { "main": [[{ "node": "Criar Cobrança Asaas", "type": "main", "index": 0 }]] },
+    "Criar Cliente Asaas":      { "main": [[{ "node": "Criar Cobrança Asaas", "type": "main", "index": 0 }]] },
+    "Criar Cobrança Asaas":     { "main": [[{ "node": "Atualizar Cobrança no CRM",      "type": "main", "index": 0 }]] },
+    "Atualizar Cobrança no CRM":{ "main": [[{ "node": "Enviar Link Pagamento WhatsApp", "type": "main", "index": 0 }]] },
+    "Enviar Link Pagamento WhatsApp": { "main": [[{ "node": "Responder CRM",            "type": "main", "index": 0 }]] }
+  }
+}

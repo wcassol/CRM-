@@ -1,0 +1,127 @@
+{
+  "name": "03 · Envio de Contrato via ZapSign",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "contratos" }, { "name": "zapsign" }],
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000001",
+      "name": "Webhook Envio Contrato",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crm-envio-contrato",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "envio-contrato",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Chamado pelo CRM quando comercial clica 'Enviar Contrato'"
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000002",
+      "name": "Validar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body ?? $input.first().json;\nif (!b.lead_id || !b.contract_id) {\n  throw new Error('lead_id e contract_id são obrigatórios');\n}\nreturn [{ json: b }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Buscar Dados do Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.CRM_BASE_URL }}/api/trpc/leads.byId?input={{ encodeURIComponent(JSON.stringify($json.lead_id)) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000004",
+      "name": "Criar Documento ZapSign",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.zapsign.com.br/api/v1/docs/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPSIGN_API_TOKEN }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ name: 'Contrato de Honorários - ' + $('Buscar Dados do Lead').first().json.result?.data?.nome, lang: 'pt-br', external_id: $('Validar Payload').first().json.lead_id, template_id: $env.ZAPSIGN_TEMPLATE_ID ?? undefined, signers: [{ name: $('Buscar Dados do Lead').first().json.result?.data?.nome, email: $('Buscar Dados do Lead').first().json.result?.data?.email, phone_number: $('Buscar Dados do Lead').first().json.result?.data?.telefone, auth_mode: 'assinaturaTela' }] }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000005",
+      "name": "Atualizar Contrato no CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL }}/api/trpc/contracts.update",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ json: { id: $('Validar Payload').first().json.contract_id, zapsign_token: $json.token, zapsign_doc_url: $json.original_file, status: 'enviado', enviado_em: new Date().toISOString() } }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000006",
+      "name": "Enviar Link WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ZAPCONNECTA_API_URL }}/send-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPCONNECTA_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ phone: $('Buscar Dados do Lead').first().json.result?.data?.telefone, message: `Olá ${$('Buscar Dados do Lead').first().json.result?.data?.nome?.split(' ')[0]}! 📄\\n\\nSeu contrato de honorários está pronto para assinatura digital.\\n\\nClique no link abaixo para assinar de forma segura pelo seu celular:\\n\\n${$('Criar Documento ZapSign').first().json.original_file}\\n\\nA assinatura é 100% digital e tem validade jurídica. ✅`, instance_id: $env.ZAPCONNECTA_INSTANCE_ID }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000007",
+      "name": "Responder CRM",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, zapsign_token: $('Criar Documento ZapSign').first().json.token }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Envio Contrato": { "main": [[{ "node": "Validar Payload",              "type": "main", "index": 0 }]] },
+    "Validar Payload":        { "main": [[{ "node": "Buscar Dados do Lead",          "type": "main", "index": 0 }]] },
+    "Buscar Dados do Lead":   { "main": [[{ "node": "Criar Documento ZapSign",       "type": "main", "index": 0 }]] },
+    "Criar Documento ZapSign":{ "main": [[{ "node": "Atualizar Contrato no CRM",     "type": "main", "index": 0 }]] },
+    "Atualizar Contrato no CRM":{ "main": [[{ "node": "Enviar Link WhatsApp",        "type": "main", "index": 0 }]] },
+    "Enviar Link WhatsApp":   { "main": [[{ "node": "Responder CRM",                 "type": "main", "index": 0 }]] }
+  }
+}

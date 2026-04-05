@@ -1,0 +1,89 @@
+{
+  "name": "09 · Relatório Semanal (Segunda 8h)",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "relatorios" }, { "name": "agendado" }],
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0009-0009-0009-000000000001",
+      "name": "Toda Segunda 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * 1" }] }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0009-0009-0009-000000000002",
+      "name": "Buscar Métricas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.CRM_BASE_URL }}/api/n8n/relatorio",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0009-0009-0009-000000000003",
+      "name": "Montar HTML do Relatório",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst m = d.metricas;\nconst periodo = `${d.periodo?.inicio} a ${d.periodo?.fim}`;\n\n// Funil como texto\nconst funilTexto = (d.funil ?? [])\n  .map(e => `${e.etapa}: ${e.total}`)\n  .join('\\n');\n\n// Ranking\nconst rankingTexto = (d.ranking_comercial ?? [])\n  .map((r, i) => `${i+1}. ${r.nome} — ${r.total} fechamento(s)`)\n  .join('\\n');\n\n// HTML para e-mail\nconst html = `\n<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n<h2 style=\"color: #1e40af;\">📊 Relatório Semanal CRM Jurídico</h2>\n<p style=\"color: #6b7280;\">Período: ${periodo}</p>\n\n<table style=\"width:100%;border-collapse:collapse;margin:16px 0;\">\n  <tr style=\"background:#eff6ff;\"><th colspan=\"2\" style=\"padding:10px;text-align:left;border-bottom:2px solid #1e40af;\">Resumo da Semana</th></tr>\n  <tr><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;\">🆕 Leads criados</td><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;\">${m.leads_criados}</td></tr>\n  <tr><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;\">📅 Reuniões realizadas</td><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;\">${m.reunioes_realizadas}</td></tr>\n  <tr><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;\">📝 Contratos assinados</td><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;\">${m.contratos_assinados}</td></tr>\n  <tr><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;\">✅ Tarefas concluídas</td><td style=\"padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;\">${m.tarefas_concluidas}</td></tr>\n  <tr><td style=\"padding:8px;\">💰 Receita confirmada</td><td style=\"padding:8px;font-weight:bold;color:#16a34a;\">R$ ${m.receita_semana?.toFixed(2)}</td></tr>\n</table>\n\n<h3 style=\"color:#1e40af;\">🏆 Ranking Comercial</h3>\n<pre style=\"background:#f9fafb;padding:12px;border-radius:8px;\">${rankingTexto || 'Nenhum fechamento esta semana'}</pre>\n\n<h3 style=\"color:#1e40af;\">📈 Funil Atual</h3>\n<pre style=\"background:#f9fafb;padding:12px;border-radius:8px;\">${funilTexto || 'Sem dados'}</pre>\n\n<h3 style=\"color:#1e40af;\">🔔 Estado Atual do CRM</h3>\n<table style=\"width:100%;border-collapse:collapse;\">\n  <tr><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;\">Onboardings ativos</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;font-weight:bold;\">${d.estado_atual?.onboardings_ativos ?? 0}</td></tr>\n  <tr><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;\">Cobranças pendentes</td><td style=\"padding:6px;border-bottom:1px solid #e5e7eb;font-weight:bold;\">${d.estado_atual?.cobracas_pendentes ?? 0}</td></tr>\n  <tr><td style=\"padding:6px;\">Tarefas vencidas</td><td style=\"padding:6px;font-weight:bold;color:#dc2626;\">${d.estado_atual?.tarefas_vencidas ?? 0}</td></tr>\n</table>\n\n<p style=\"color:#9ca3af;font-size:12px;margin-top:24px;\">Gerado automaticamente pelo CRM Jurídico em ${new Date(d.gerado_em).toLocaleString('pt-BR')}</p>\n</body></html>`;\n\n// Texto para WhatsApp\nconst whatsapp = `📊 *Relatório Semanal — ${periodo}*\\n\\n` +\n  `🆕 Leads criados: *${m.leads_criados}*\\n` +\n  `📅 Reuniões realizadas: *${m.reunioes_realizadas}*\\n` +\n  `📝 Contratos assinados: *${m.contratos_assinados}*\\n` +\n  `💰 Receita: *R$ ${m.receita_semana?.toFixed(2)}*\\n\\n` +\n  `🏆 Top vendedor: *${d.ranking_comercial?.[0]?.nome ?? 'N/A'}*\\n\\n` +\n  `⚠️ Tarefas vencidas: *${d.estado_atual?.tarefas_vencidas ?? 0}*`;\n\nreturn [{ json: { html, whatsapp, periodo, metricas: m } }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0009-0009-0009-000000000004",
+      "name": "Enviar E-mail Admin",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [900, 200],
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM_EMAIL }}",
+        "toEmail":   "={{ $env.RELATORIO_DESTINATARIOS }}",
+        "subject":   "📊 Relatório Semanal CRM — {{ $json.periodo }}",
+        "emailFormat": "html",
+        "html":      "={{ $json.html }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0009-0009-0009-000000000005",
+      "name": "Enviar WhatsApp Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ZAPCONNECTA_API_URL }}/send-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPCONNECTA_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ phone: $env.ADMIN_WHATSAPP_NUMBER, message: $('Montar HTML do Relatório').first().json.whatsapp, instance_id: $env.ZAPCONNECTA_INSTANCE_ID }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Toda Segunda 8h":   { "main": [[{ "node": "Buscar Métricas",              "type": "main", "index": 0 }]] },
+    "Buscar Métricas":   { "main": [[{ "node": "Montar HTML do Relatório",     "type": "main", "index": 0 }]] },
+    "Montar HTML do Relatório": {
+      "main": [[
+        { "node": "Enviar E-mail Admin",    "type": "main", "index": 0 },
+        { "node": "Enviar WhatsApp Admin",  "type": "main", "index": 0 }
+      ]]
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "name": "06 · Lembrete de Documentos Pendentes (Diário)",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "documentos" }, { "name": "agendado" }],
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000001",
+      "name": "Agendamento Diário 10h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 10 * * 1-5" }] }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000002",
+      "name": "Buscar Docs Pendentes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.CRM_BASE_URL }}/api/n8n/documentos-pendentes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000003",
+      "name": "Tem pendências?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [{ "leftValue": "={{ $json.total }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000004",
+      "name": "Separar por Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "parameters": {
+        "jsCode": "return ($input.first().json.leads ?? []).map(l => ({ json: l }));"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000005",
+      "name": "Montar Lista de Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200],
+      "parameters": {
+        "jsCode": "const l = $input.first().json;\nconst listaObrigatorios = (l.documentos_pendentes ?? [])\n  .filter(d => d.obrigatorio)\n  .map(d => `• ${d.nome}`)\n  .join('\\n');\n\nreturn [{ json: {\n  ...l,\n  lista_docs: listaObrigatorios,\n  dias_pendente: l.dias_sem_atualizacao,\n} }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Aguardar 5s (Rate Limit)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1340, 200],
+      "parameters": { "amount": 5, "unit": "seconds" }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000007",
+      "name": "Enviar Lembrete WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1560, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ZAPCONNECTA_API_URL }}/send-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPCONNECTA_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ phone: $json.telefone, message: `Olá ${$json.nome?.split(' ')[0]}! 📋\\n\\nPassando para lembrar que ainda precisamos dos seguintes documentos para dar continuidade ao seu caso:\\n\\n${$json.lista_docs}\\n\\nAssim que enviar, nossa equipe dará prosseguimento rapidamente.\\n\\nQualquer dúvida é só nos perguntar! 😊`, instance_id: $env.ZAPCONNECTA_INSTANCE_ID }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000008",
+      "name": "Registrar Interação CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1780, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL }}/api/trpc/interactions.create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ json: { lead_id: $json.id, tipo: 'whatsapp', conteudo: `Lembrete automático de documentos enviado. ${$json.obrigatorios_faltando} doc(s) obrigatório(s) pendente(s).`, metadata: { automatico: true, docs_pendentes: $json.obrigatorios_faltando } } }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000009",
+      "name": "Sem Pendências",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 420],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Agendamento Diário 10h": { "main": [[{ "node": "Buscar Docs Pendentes", "type": "main", "index": 0 }]] },
+    "Buscar Docs Pendentes":  { "main": [[{ "node": "Tem pendências?",       "type": "main", "index": 0 }]] },
+    "Tem pendências?": {
+      "main": [
+        [{ "node": "Separar por Lead", "type": "main", "index": 0 }],
+        [{ "node": "Sem Pendências",   "type": "main", "index": 0 }]
+      ]
+    },
+    "Separar por Lead":           { "main": [[{ "node": "Montar Lista de Docs",       "type": "main", "index": 0 }]] },
+    "Montar Lista de Docs":       { "main": [[{ "node": "Aguardar 5s (Rate Limit)",   "type": "main", "index": 0 }]] },
+    "Aguardar 5s (Rate Limit)":   { "main": [[{ "node": "Enviar Lembrete WhatsApp",   "type": "main", "index": 0 }]] },
+    "Enviar Lembrete WhatsApp":   { "main": [[{ "node": "Registrar Interação CRM",    "type": "main", "index": 0 }]] }
+  }
+}

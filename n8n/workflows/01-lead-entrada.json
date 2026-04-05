@@ -1,0 +1,82 @@
+{
+  "name": "01 · Lead Entrada (ZapConnecta → CRM)",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "leads" }],
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true, "callerPolicy": "workflowsFromSameOwner" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook ZapConnecta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crm-lead-entrada",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zapconnecta-lead",
+        "responseMode": "responseNode",
+        "options": { "rawBody": true }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Normalizar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "// Adapta o payload do ZapConnecta/Helena ao contrato do CRM\nconst body = $input.first().json.body ?? $input.first().json;\n\n// Extrair telefone limpo\nconst telefone = (body.phone ?? body.telefone ?? '').replace(/\\D/g, '');\n\n// Mapear área jurídica\nconst AREAS = {\n  previdenciario: 'previdenciario',\n  inss: 'previdenciario',\n  trabalhista: 'trabalhista',\n  clt: 'trabalhista',\n  consumidor: 'consumidor',\n  cdc: 'consumidor',\n  civil: 'civel',\n  civel: 'civel',\n};\n\nconst areaBruta = (body.area ?? body.assunto ?? '').toLowerCase();\nconst area = Object.entries(AREAS).find(([k]) => areaBruta.includes(k))?.[1] ?? null;\n\n// Gerar external_id idempotente\nconst externalId = body.message_id ?? body.id ?? `wa_${telefone}_${Date.now()}`;\n\nreturn [{\n  json: {\n    external_id:    externalId,\n    nome:           body.name ?? body.nome ?? 'Não identificado',\n    telefone:       telefone,\n    email:          body.email ?? null,\n    cpf:            body.cpf ?? null,\n    area_juridica:  area,\n    descricao_caso: body.message ?? body.mensagem ?? body.descricao ?? null,\n    urgencia:       body.urgencia === true || body.urgencia === 'true',\n    prazo_sensivel: body.prazo_sensivel === true,\n    canal_origem:   'whatsapp',\n    n8n_execution_id: $execution.id,\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Enviar ao CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL }}/api/webhooks/lead-entrada",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-webhook-secret", "value": "={{ $env.WEBHOOK_SECRET_LEAD_ENTRADA }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 15000, "response": { "response": { "neverError": false } } }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Responder ZapConnecta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, lead_id: $json.lead_id }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Tratar Erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 460],
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 500,
+        "responseBody": "={ \"ok\": false, \"error\": \"Falha ao registrar lead\" }"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook ZapConnecta":     { "main": [[{ "node": "Normalizar Payload", "type": "main", "index": 0 }]] },
+    "Normalizar Payload":      { "main": [[{ "node": "Enviar ao CRM", "type": "main", "index": 0 }]] },
+    "Enviar ao CRM":           { "main": [[{ "node": "Responder ZapConnecta", "type": "main", "index": 0 }], [{ "node": "Tratar Erro", "type": "main", "index": 0 }]] }
+  }
+}

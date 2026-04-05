@@ -1,0 +1,132 @@
+{
+  "name": "05 · Onboarding Iniciado (Alertas)",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "onboarding" }],
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000001",
+      "name": "Webhook Onboarding Iniciado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crm-onboarding-iniciado",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "onboarding-iniciado",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Disparado pelo CRM quando pagamento é confirmado e lead entra no onboarding"
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000002",
+      "name": "Extrair Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "s1", "name": "lead_id",   "value": "={{ $json.body?.lead_id ?? $json.lead_id }}", "type": "string" },
+            { "id": "s2", "name": "nome",       "value": "={{ $json.body?.nome ?? $json.nome }}", "type": "string" },
+            { "id": "s3", "name": "telefone",   "value": "={{ $json.body?.telefone ?? $json.telefone }}", "type": "string" },
+            { "id": "s4", "name": "area_juridica", "value": "={{ $json.body?.area_juridica ?? $json.area_juridica }}", "type": "string" },
+            { "id": "s5", "name": "responsavel_juridico_id", "value": "={{ $json.body?.responsavel_juridico_id ?? null }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000003",
+      "name": "Executa em Paralelo",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 300],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000004",
+      "name": "Boas-vindas ao Cliente WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ZAPCONNECTA_API_URL }}/send-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPCONNECTA_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ phone: $json.telefone, message: `Olá ${$json.nome?.split(' ')[0]}! 🎉\\n\\nSua contratação foi confirmada! Somos parceiros na sua jornada jurídica.\\n\\nAgora precisamos que nos envie alguns documentos para iniciarmos o seu caso. Em breve nossa equipe jurídica entrará em contato para orientar os próximos passos.\\n\\nBem-vindo(a) ao escritório! ⚖️`, instance_id: $env.ZAPCONNECTA_INSTANCE_ID }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Buscar Time Jurídico",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.CRM_BASE_URL }}/api/trpc/users.byRole?input=%22juridico%22",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000006",
+      "name": "Notificar Jurídico",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 420],
+      "parameters": {
+        "jsCode": "// Envia notificação para cada membro do time jurídico\nconst usuarios = $input.first().json.result?.data ?? [];\nconst lead = $('Extrair Dados').first().json;\n\nreturn usuarios.map(u => ({\n  json: {\n    usuario_id: u.id,\n    nome:       u.full_name,\n    mensagem:   `Novo cliente para onboarding: ${lead.nome} | Área: ${lead.area_juridica ?? 'Não definida'} | Lead ID: ${lead.lead_id}`,\n  }\n}));"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000007",
+      "name": "Criar Notificação CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1340, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL }}/api/trpc/notifications.create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-n8n-api-key", "value": "={{ $env.N8N_INTERNAL_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ json: { usuario_id: $json.usuario_id, tipo: 'onboarding_iniciado', titulo: 'Novo cliente para onboarding', mensagem: $json.mensagem, entity_type: 'lead', entity_id: $('Extrair Dados').first().json.lead_id } }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000008",
+      "name": "Responder CRM",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Onboarding Iniciado": { "main": [[{ "node": "Extrair Dados",            "type": "main", "index": 0 }]] },
+    "Extrair Dados":               { "main": [[{ "node": "Boas-vindas ao Cliente WhatsApp", "type": "main", "index": 0 }, { "node": "Buscar Time Jurídico", "type": "main", "index": 0 }]] },
+    "Buscar Time Jurídico":        { "main": [[{ "node": "Notificar Jurídico",        "type": "main", "index": 0 }]] },
+    "Notificar Jurídico":          { "main": [[{ "node": "Criar Notificação CRM",     "type": "main", "index": 0 }]] },
+    "Criar Notificação CRM":       { "main": [[{ "node": "Responder CRM",             "type": "main", "index": 0 }]] },
+    "Boas-vindas ao Cliente WhatsApp": { "main": [[{ "node": "Responder CRM",         "type": "main", "index": 0 }]] }
+  }
+}

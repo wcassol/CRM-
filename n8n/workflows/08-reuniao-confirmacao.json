@@ -1,0 +1,155 @@
+{
+  "name": "08 · Confirmação de Reunião (Cal.com)",
+  "active": false,
+  "tags": [{ "name": "crm-juridico" }, { "name": "reunioes" }, { "name": "calcom" }],
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000001",
+      "name": "Webhook Cal.com",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crm-calcom-booking",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "calcom-booking",
+        "responseMode": "responseNode",
+        "options": { "rawBody": true }
+      },
+      "notes": "Recebe TODOS os eventos do Cal.com. n8n repassa para o CRM e também envia confirmação WhatsApp"
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000002",
+      "name": "Validar Assinatura HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst rawBody  = $input.first().json.rawBody ?? JSON.stringify($input.first().json.body ?? $input.first().json);\nconst signature = $input.first().json.headers?.['x-cal-signature-256'] ?? '';\nconst secret   = $env.CALCOM_WEBHOOK_SECRET ?? '';\n\nif (secret && signature) {\n  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');\n  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {\n    throw new Error('Assinatura Cal.com inválida');\n  }\n}\n\nconst payload = typeof $input.first().json.body === 'string'\n  ? JSON.parse($input.first().json.body)\n  : ($input.first().json.body ?? $input.first().json);\n\nreturn [{ json: payload }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000003",
+      "name": "Repassar ao CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL }}/api/webhooks/calcom",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 15000 }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000004",
+      "name": "É BOOKING_CREATED?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [{ "leftValue": "={{ $('Validar Assinatura HMAC').first().json.triggerEvent }}", "rightValue": "BOOKING_CREATED", "operator": { "type": "string", "operation": "equals" } }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000005",
+      "name": "Extrair Dados Reunião",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200],
+      "parameters": {
+        "jsCode": "const p = $('Validar Assinatura HMAC').first().json.payload;\nconst attendee = p.attendees?.[0];\nconst startTime = new Date(p.startTime);\n\nconst dataFormatada = startTime.toLocaleString('pt-BR', {\n  timeZone: attendee?.timeZone ?? 'America/Sao_Paulo',\n  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',\n  hour: '2-digit', minute: '2-digit',\n});\n\nreturn [{ json: {\n  nome:     attendee?.name ?? 'Cliente',\n  email:    attendee?.email ?? null,\n  telefone: p.responses?.telefone?.value ?? p.responses?.phone?.value ?? null,\n  data_formatada: dataFormatada,\n  meet_url:  p.meetingUrl ?? null,\n  uid:       p.uid,\n} }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000006",
+      "name": "Telefone disponível?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 200],
+      "parameters": {
+        "conditions": {
+          "conditions": [{ "leftValue": "={{ $json.telefone }}", "rightValue": "", "operator": { "type": "string", "operation": "isNotEmpty" } }]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000007",
+      "name": "Enviar Confirmação WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1560, 160],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ZAPCONNECTA_API_URL }}/send-message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.ZAPCONNECTA_API_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ phone: $json.telefone.replace(/\\D/g,''), message: `Olá ${$json.nome?.split(' ')[0]}! ✅\\n\\nSua consulta foi confirmada:\\n\\n📅 ${$json.data_formatada}\\n${$json.meet_url ? `🔗 Link da reunião: ${$json.meet_url}` : '📍 Presencial — endereço enviado por e-mail'}\\n\\nLembretes:\\n• Tenha em mãos os documentos do seu caso\\n• Entre no link com 2 minutos de antecedência\\n\\nAté lá! ⚖️`, instance_id: $env.ZAPCONNECTA_INSTANCE_ID }) }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000008",
+      "name": "Sem telefone",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1560, 320],
+      "parameters": {}
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000009",
+      "name": "Outro Evento",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1120, 420],
+      "parameters": {}
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000010",
+      "name": "Responder Cal.com",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Cal.com":             { "main": [[{ "node": "Validar Assinatura HMAC",     "type": "main", "index": 0 }]] },
+    "Validar Assinatura HMAC":     { "main": [[{ "node": "Repassar ao CRM",             "type": "main", "index": 0 }]] },
+    "Repassar ao CRM":             { "main": [[{ "node": "É BOOKING_CREATED?",          "type": "main", "index": 0 }]] },
+    "É BOOKING_CREATED?": {
+      "main": [
+        [{ "node": "Extrair Dados Reunião", "type": "main", "index": 0 }],
+        [{ "node": "Outro Evento",          "type": "main", "index": 0 }]
+      ]
+    },
+    "Extrair Dados Reunião":       { "main": [[{ "node": "Telefone disponível?",        "type": "main", "index": 0 }]] },
+    "Telefone disponível?": {
+      "main": [
+        [{ "node": "Enviar Confirmação WhatsApp", "type": "main", "index": 0 }],
+        [{ "node": "Sem telefone",               "type": "main", "index": 0 }]
+      ]
+    },
+    "Enviar Confirmação WhatsApp": { "main": [[{ "node": "Responder Cal.com",           "type": "main", "index": 0 }]] },
+    "Sem telefone":                { "main": [[{ "node": "Responder Cal.com",           "type": "main", "index": 0 }]] },
+    "Outro Evento":                { "main": [[{ "node": "Responder Cal.com",           "type": "main", "index": 0 }]] }
+  }
+}
