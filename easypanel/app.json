@@ -1,0 +1,161 @@
+{
+  "_comment": "EasyPanel App Configuration — CRM Jurídico",
+  "_doc": "Importe este arquivo em: EasyPanel → Project → Create Service → Import JSON",
+
+  "services": [
+
+    {
+      "type": "app",
+      "data": {
+        "projectName": "crm-juridico",
+        "serviceName": "app",
+        "source": {
+          "type": "git",
+          "repo": "https://github.com/SEU_ORG/crm-juridico.git",
+          "ref": "main",
+          "autoDeploy": true
+        },
+        "build": {
+          "type": "dockerfile",
+          "file": "Dockerfile",
+          "args": [
+            { "name": "NEXT_PUBLIC_SUPABASE_URL",      "value": "${NEXT_PUBLIC_SUPABASE_URL}" },
+            { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "value": "${NEXT_PUBLIC_SUPABASE_ANON_KEY}" },
+            { "name": "NEXT_PUBLIC_APP_URL",            "value": "https://${DOMAIN}" }
+          ]
+        },
+        "env": [
+          { "name": "NODE_ENV",                        "value": "production" },
+          { "name": "NEXT_PUBLIC_SUPABASE_URL",        "value": "" },
+          { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY",   "value": "" },
+          { "name": "SUPABASE_SERVICE_ROLE_KEY",       "value": "" },
+          { "name": "NEXT_PUBLIC_APP_URL",             "value": "" },
+          { "name": "N8N_INTERNAL_API_KEY",            "value": "" },
+          { "name": "N8N_BASE_URL",                    "value": "" },
+          { "name": "WEBHOOK_SECRET_LEAD_ENTRADA",     "value": "" },
+          { "name": "ZAPSIGN_API_TOKEN",               "value": "" },
+          { "name": "ZAPSIGN_WEBHOOK_SECRET",          "value": "" },
+          { "name": "ASAAS_API_KEY",                   "value": "" },
+          { "name": "ASAAS_ENVIRONMENT",               "value": "production" },
+          { "name": "ASAAS_WEBHOOK_TOKEN",             "value": "" },
+          { "name": "CALCOM_API_KEY",                  "value": "" },
+          { "name": "CALCOM_WEBHOOK_SECRET",           "value": "" },
+          { "name": "ASTREA_API_TOKEN",                "value": "" },
+          { "name": "ASTREA_BASE_URL",                 "value": "https://api.astrea.net.br/v1" },
+          { "name": "ZAPCONNECTA_API_URL",             "value": "" },
+          { "name": "ZAPCONNECTA_API_KEY",             "value": "" },
+          { "name": "ZAPCONNECTA_INSTANCE_ID",         "value": "" }
+        ],
+        "domains": [
+          {
+            "host":     "$(EASYPANEL_DOMAIN)",
+            "port":     3000,
+            "https":    true,
+            "www":      false
+          }
+        ],
+        "ports": [
+          { "published": 3000, "target": 3000, "protocol": "tcp" }
+        ],
+        "healthCheck": {
+          "enabled":      true,
+          "path":         "/api/health",
+          "port":         3000,
+          "interval":     30,
+          "timeout":      10,
+          "startPeriod":  45,
+          "retries":      3
+        },
+        "deploy": {
+          "replicas":         1,
+          "command":          null,
+          "zeroDowntime":     true,
+          "restartPolicy":    "on-failure",
+          "restartMaxAttempts": 3
+        },
+        "resources": {
+          "memoryLimit":      512,
+          "memoryReservation": 256,
+          "cpuLimit":         1,
+          "cpuReservation":   0.25
+        }
+      }
+    },
+
+    {
+      "type": "app",
+      "data": {
+        "projectName": "crm-juridico",
+        "serviceName": "n8n",
+        "source": {
+          "type": "image",
+          "image": "n8nio/n8n:latest"
+        },
+        "env": [
+          { "name": "DB_TYPE",                   "value": "postgresdb" },
+          { "name": "DB_POSTGRESDB_HOST",        "value": "$(EASYPANEL_POSTGRES_HOST)" },
+          { "name": "DB_POSTGRESDB_PORT",        "value": "5432" },
+          { "name": "DB_POSTGRESDB_DATABASE",    "value": "n8n" },
+          { "name": "DB_POSTGRESDB_USER",        "value": "$(EASYPANEL_POSTGRES_USER)" },
+          { "name": "DB_POSTGRESDB_PASSWORD",    "value": "$(EASYPANEL_POSTGRES_PASSWORD)" },
+          { "name": "N8N_BASIC_AUTH_ACTIVE",     "value": "true" },
+          { "name": "N8N_BASIC_AUTH_USER",       "value": "admin" },
+          { "name": "N8N_BASIC_AUTH_PASSWORD",   "value": "" },
+          { "name": "WEBHOOK_URL",               "value": "" },
+          { "name": "N8N_EDITOR_BASE_URL",       "value": "" },
+          { "name": "GENERIC_TIMEZONE",          "value": "America/Sao_Paulo" },
+          { "name": "N8N_LOG_LEVEL",             "value": "info" },
+          { "name": "EXECUTIONS_DATA_PRUNE",     "value": "true" },
+          { "name": "EXECUTIONS_DATA_MAX_AGE",   "value": "336" },
+          { "name": "CRM_BASE_URL",              "value": "" },
+          { "name": "N8N_INTERNAL_API_KEY",      "value": "" },
+          { "name": "ZAPSIGN_API_TOKEN",         "value": "" },
+          { "name": "ASAAS_API_KEY",             "value": "" },
+          { "name": "ASAAS_BASE_URL",            "value": "https://api.asaas.com/v3" },
+          { "name": "CALCOM_API_KEY",            "value": "" },
+          { "name": "CALCOM_WEBHOOK_SECRET",     "value": "" },
+          { "name": "ASTREA_API_TOKEN",          "value": "" },
+          { "name": "ZAPCONNECTA_API_URL",       "value": "" },
+          { "name": "ZAPCONNECTA_API_KEY",       "value": "" },
+          { "name": "ZAPCONNECTA_INSTANCE_ID",   "value": "" },
+          { "name": "SMTP_HOST",                 "value": "" },
+          { "name": "SMTP_PORT",                 "value": "587" },
+          { "name": "SMTP_USER",                 "value": "" },
+          { "name": "SMTP_PASS",                 "value": "" },
+          { "name": "SMTP_FROM_EMAIL",           "value": "" },
+          { "name": "RELATORIO_DESTINATARIOS",   "value": "" },
+          { "name": "ADMIN_WHATSAPP_NUMBER",     "value": "" }
+        ],
+        "domains": [
+          {
+            "host":  "$(EASYPANEL_DOMAIN)",
+            "port":  5678,
+            "https": true,
+            "www":   false
+          }
+        ],
+        "mounts": [
+          {
+            "type":   "volume",
+            "name":   "n8n-data",
+            "mountPath": "/home/node/.n8n"
+          }
+        ],
+        "healthCheck": {
+          "enabled":     true,
+          "path":        "/healthz",
+          "port":        5678,
+          "interval":    30,
+          "timeout":     10,
+          "startPeriod": 60,
+          "retries":     5
+        },
+        "resources": {
+          "memoryLimit":      1024,
+          "memoryReservation": 512
+        }
+      }
+    }
+
+  ]
+}

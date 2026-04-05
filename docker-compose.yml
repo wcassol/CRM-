@@ -1,0 +1,135 @@
+# =============================================================================
+# CRM JURÍDICO — Docker Compose (Desenvolvimento Local)
+# Sobe: app Next.js + n8n
+# Supabase: use `supabase start` separadamente (CLI local)
+#
+# Uso:
+#   cp .env.example .env.local
+#   # preencher variáveis
+#   supabase start          # inicia Supabase local
+#   docker compose up -d    # inicia app + n8n
+#   docker compose logs -f app
+# =============================================================================
+
+services:
+
+  # ─── Next.js App ────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL:      ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_APP_URL:            ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    image: crm-juridico:local
+    container_name: crm-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV:                        production
+      NEXT_PUBLIC_SUPABASE_URL:        ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:   ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY:       ${SUPABASE_SERVICE_ROLE_KEY}
+      N8N_INTERNAL_API_KEY:            ${N8N_INTERNAL_API_KEY}
+      N8N_BASE_URL:                    http://n8n:5678
+      ZAPSIGN_API_TOKEN:               ${ZAPSIGN_API_TOKEN:-}
+      ZAPSIGN_WEBHOOK_SECRET:          ${ZAPSIGN_WEBHOOK_SECRET:-}
+      ASAAS_API_KEY:                   ${ASAAS_API_KEY:-}
+      ASAAS_ENVIRONMENT:               ${ASAAS_ENVIRONMENT:-sandbox}
+      ASAAS_WEBHOOK_TOKEN:             ${ASAAS_WEBHOOK_TOKEN:-}
+      CALCOM_API_KEY:                  ${CALCOM_API_KEY:-}
+      CALCOM_WEBHOOK_SECRET:           ${CALCOM_WEBHOOK_SECRET:-}
+      ASTREA_API_TOKEN:                ${ASTREA_API_TOKEN:-}
+      WEBHOOK_SECRET_LEAD_ENTRADA:     ${WEBHOOK_SECRET_LEAD_ENTRADA:-}
+    healthcheck:
+      test:  ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout:  10s
+      retries:  3
+      start_period: 45s
+    depends_on:
+      n8n:
+        condition: service_healthy
+    networks:
+      - crm-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── n8n (Automações) ───────────────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: crm-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Database — SQLite persiste em volume, use Postgres para produção
+      DB_TYPE:               sqlite
+      DB_SQLITE_DATABASE:    /home/node/.n8n/database.sqlite
+
+      # Segurança
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER:   ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-changeme}
+
+      # URL pública do n8n (necessário para webhooks)
+      WEBHOOK_URL:             ${N8N_WEBHOOK_URL:-http://localhost:5678}
+      N8N_EDITOR_BASE_URL:    ${N8N_WEBHOOK_URL:-http://localhost:5678}
+
+      # Fuso horário para cron jobs
+      GENERIC_TIMEZONE:       America/Sao_Paulo
+
+      # Execuções
+      EXECUTIONS_PROCESS:     main
+      N8N_LOG_LEVEL:          info
+
+      # Variáveis disponíveis nos workflows
+      CRM_BASE_URL:                 ${NEXT_PUBLIC_APP_URL:-http://app:3000}
+      N8N_INTERNAL_API_KEY:         ${N8N_INTERNAL_API_KEY}
+      WEBHOOK_SECRET_LEAD_ENTRADA:  ${WEBHOOK_SECRET_LEAD_ENTRADA:-}
+      ZAPSIGN_API_TOKEN:            ${ZAPSIGN_API_TOKEN:-}
+      ASAAS_API_KEY:                ${ASAAS_API_KEY:-}
+      ASAAS_BASE_URL:               ${ASAAS_ENVIRONMENT:-sandbox} == production && echo https://api.asaas.com/v3 || echo https://sandbox.asaas.com/api/v3
+      CALCOM_API_KEY:               ${CALCOM_API_KEY:-}
+      CALCOM_WEBHOOK_SECRET:        ${CALCOM_WEBHOOK_SECRET:-}
+      ASTREA_API_TOKEN:             ${ASTREA_API_TOKEN:-}
+      ASTREA_BASE_URL:              ${ASTREA_BASE_URL:-https://api.astrea.net.br/v1}
+      ZAPCONNECTA_API_URL:          ${ZAPCONNECTA_API_URL:-}
+      ZAPCONNECTA_API_KEY:          ${ZAPCONNECTA_API_KEY:-}
+      ZAPCONNECTA_INSTANCE_ID:      ${ZAPCONNECTA_INSTANCE_ID:-}
+      SMTP_HOST:                    ${SMTP_HOST:-}
+      SMTP_PORT:                    ${SMTP_PORT:-587}
+      SMTP_USER:                    ${SMTP_USER:-}
+      SMTP_PASS:                    ${SMTP_PASS:-}
+      SMTP_FROM_EMAIL:              ${SMTP_FROM_EMAIL:-}
+      RELATORIO_DESTINATARIOS:      ${RELATORIO_DESTINATARIOS:-}
+      ADMIN_WHATSAPP_NUMBER:        ${ADMIN_WHATSAPP_NUMBER:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout:  10s
+      retries:  5
+      start_period: 60s
+    networks:
+      - crm-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  n8n_data:
+    name: crm-n8n-data
+
+networks:
+  crm-net:
+    name: crm-network
+    driver: bridge
