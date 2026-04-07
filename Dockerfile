@@ -64,8 +64,8 @@ RUN addgroup --system --gid 1001 nodejs \
 # Variáveis de runtime
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-# Porta padrão Next.js
-ENV PORT=3000
+# Porta — EasyPanel pode sobrescrever via variável PORT
+ENV PORT=80
 ENV HOSTNAME=0.0.0.0
 
 # Copia arquivos públicos estáticos
@@ -80,11 +80,11 @@ RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 80
 
-# Health check integrado ao container
+# Health check — usa a mesma porta que o app está escutando
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD wget -qO- http://localhost:${PORT}/api/health || exit 1
 
 # Inicia com o servidor standalone do Next.js
 CMD ["node", "server.js"]
