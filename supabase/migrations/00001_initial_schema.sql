@@ -555,7 +555,8 @@ CREATE TABLE custom_field_definitions (
   area_juridica   TEXT,                      -- NULL = todos
   ordem           SMALLINT DEFAULT 0,
   ativo           BOOLEAN DEFAULT TRUE,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE lead_custom_fields (
