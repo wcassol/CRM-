@@ -82,29 +82,29 @@ export type AuditAction       = 'create' | 'update' | 'delete' | 'stage_change' 
 export interface Database {
   public: {
     Tables: {
-      roles:                  { Row: DbRole;                Insert: DbRoleInsert;                Update: DbRoleUpdate }
-      users:                  { Row: DbUser;                Insert: DbUserInsert;                Update: DbUserUpdate }
-      lead_sources:           { Row: DbLeadSource;          Insert: DbLeadSourceInsert;          Update: DbLeadSourceUpdate }
-      loss_reasons:           { Row: DbLossReason;          Insert: DbLossReasonInsert;          Update: DbLossReasonUpdate }
-      document_requirements:  { Row: DbDocumentRequirement; Insert: DbDocumentRequirementInsert; Update: DbDocumentRequirementUpdate }
-      leads:                  { Row: DbLead;                Insert: DbLeadInsert;                Update: DbLeadUpdate }
-      pipeline_history:       { Row: DbPipelineHistory;     Insert: DbPipelineHistoryInsert;     Update: never }
-      lead_interactions:      { Row: DbInteraction;         Insert: DbInteractionInsert;         Update: never }
-      lead_documents:         { Row: DbDocument;            Insert: DbDocumentInsert;            Update: DbDocumentUpdate }
-      appointments:           { Row: DbAppointment;         Insert: DbAppointmentInsert;         Update: DbAppointmentUpdate }
-      proposals:              { Row: DbProposal;            Insert: DbProposalInsert;            Update: DbProposalUpdate }
-      contracts:              { Row: DbContract;            Insert: DbContractInsert;            Update: DbContractUpdate }
-      charges:                { Row: DbCharge;              Insert: DbChargeInsert;              Update: DbChargeUpdate }
-      tasks:                  { Row: DbTask;                Insert: DbTaskInsert;                Update: DbTaskUpdate }
-      onboarding_checklists:  { Row: DbOnboardingChecklist; Insert: DbOnboardingChecklistInsert; Update: DbOnboardingChecklistUpdate }
-      onboarding_items:       { Row: DbOnboardingItem;      Insert: DbOnboardingItemInsert;      Update: DbOnboardingItemUpdate }
-      lead_tags:              { Row: DbLeadTag;             Insert: DbLeadTagInsert;             Update: never }
-      custom_field_definitions: { Row: DbCustomFieldDef;   Insert: DbCustomFieldDefInsert;      Update: DbCustomFieldDefUpdate }
-      lead_custom_fields:     { Row: DbLeadCustomField;     Insert: DbLeadCustomFieldInsert;     Update: DbLeadCustomFieldUpdate }
-      integrations:           { Row: DbIntegration;         Insert: DbIntegrationInsert;         Update: DbIntegrationUpdate }
-      notifications:          { Row: DbNotification;        Insert: DbNotificationInsert;        Update: DbNotificationUpdate }
-      audit_logs:             { Row: DbAuditLog;            Insert: DbAuditLogInsert;            Update: never }
-      webhook_queue:          { Row: DbWebhookQueue;        Insert: DbWebhookQueueInsert;        Update: DbWebhookQueueUpdate }
+      roles:                  { Row: DbRole;                Insert: DbRoleInsert;                Update: DbRoleUpdate;                Relationships: never[] }
+      users:                  { Row: DbUser;                Insert: DbUserInsert;                Update: DbUserUpdate;                Relationships: never[] }
+      lead_sources:           { Row: DbLeadSource;          Insert: DbLeadSourceInsert;          Update: DbLeadSourceUpdate;          Relationships: never[] }
+      loss_reasons:           { Row: DbLossReason;          Insert: DbLossReasonInsert;          Update: DbLossReasonUpdate;          Relationships: never[] }
+      document_requirements:  { Row: DbDocumentRequirement; Insert: DbDocumentRequirementInsert; Update: DbDocumentRequirementUpdate; Relationships: never[] }
+      leads:                  { Row: DbLead;                Insert: DbLeadInsert;                Update: DbLeadUpdate;                Relationships: never[] }
+      pipeline_history:       { Row: DbPipelineHistory;     Insert: DbPipelineHistoryInsert;     Update: never;                       Relationships: never[] }
+      lead_interactions:      { Row: DbInteraction;         Insert: DbInteractionInsert;         Update: never;                       Relationships: never[] }
+      lead_documents:         { Row: DbDocument;            Insert: DbDocumentInsert;            Update: DbDocumentUpdate;            Relationships: never[] }
+      appointments:           { Row: DbAppointment;         Insert: DbAppointmentInsert;         Update: DbAppointmentUpdate;         Relationships: never[] }
+      proposals:              { Row: DbProposal;            Insert: DbProposalInsert;            Update: DbProposalUpdate;            Relationships: never[] }
+      contracts:              { Row: DbContract;            Insert: DbContractInsert;            Update: DbContractUpdate;            Relationships: never[] }
+      charges:                { Row: DbCharge;              Insert: DbChargeInsert;              Update: DbChargeUpdate;              Relationships: never[] }
+      tasks:                  { Row: DbTask;                Insert: DbTaskInsert;                Update: DbTaskUpdate;                Relationships: never[] }
+      onboarding_checklists:  { Row: DbOnboardingChecklist; Insert: DbOnboardingChecklistInsert; Update: DbOnboardingChecklistUpdate; Relationships: never[] }
+      onboarding_items:       { Row: DbOnboardingItem;      Insert: DbOnboardingItemInsert;      Update: DbOnboardingItemUpdate;      Relationships: never[] }
+      lead_tags:              { Row: DbLeadTag;             Insert: DbLeadTagInsert;             Update: never;                       Relationships: never[] }
+      custom_field_definitions: { Row: DbCustomFieldDef;   Insert: DbCustomFieldDefInsert;      Update: DbCustomFieldDefUpdate;      Relationships: never[] }
+      lead_custom_fields:     { Row: DbLeadCustomField;     Insert: DbLeadCustomFieldInsert;     Update: DbLeadCustomFieldUpdate;     Relationships: never[] }
+      integrations:           { Row: DbIntegration;         Insert: DbIntegrationInsert;         Update: DbIntegrationUpdate;         Relationships: never[] }
+      notifications:          { Row: DbNotification;        Insert: DbNotificationInsert;        Update: DbNotificationUpdate;        Relationships: never[] }
+      audit_logs:             { Row: DbAuditLog;            Insert: DbAuditLogInsert;            Update: never;                       Relationships: never[] }
+      webhook_queue:          { Row: DbWebhookQueue;        Insert: DbWebhookQueueInsert;        Update: DbWebhookQueueUpdate;        Relationships: never[] }
     }
     Views: {
       v_leads_resumo:         { Row: DbLeadResumo }
