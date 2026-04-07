@@ -85,6 +85,7 @@ SELECT
   (SELECT COUNT(*) FROM lead_documents ld
    WHERE ld.lead_id = l.id AND ld.status = 'solicitado'
   ) AS documentos_pendentes,
+  l.search_vector,
   l.created_at,
   l.updated_at,
   l.deleted_at
