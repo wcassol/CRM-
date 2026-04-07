@@ -84,7 +84,7 @@ EXPOSE 80
 
 # Health check — usa a mesma porta que o app está escutando
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:${PORT}/api/health || exit 1
+  CMD wget -qO- http://localhost:${PORT}/api/ping || exit 1
 
 # Inicia com o servidor standalone do Next.js
 CMD ["node", "server.js"]
