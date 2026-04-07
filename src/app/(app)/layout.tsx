@@ -14,7 +14,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (c) => c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
+        setAll: (c: { name: string; value: string; options: Record<string, unknown> }[]) =>
+          c.forEach(({ name, value, options }) => cookieStore.set(name, value, options as never)),
       },
     }
   )
