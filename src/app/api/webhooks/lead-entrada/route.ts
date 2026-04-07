@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — WEBHOOK: Entrada de leads (ZapConnecta / Helena CRM)
 //
@@ -100,9 +102,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const db = supabase as any
+
     // 4. Verificar duplicata de telefone no banco
     const telefoneLimpo = input.telefone.replace(/\D/g, '')
-    const { data: existente } = await supabase
+    const { data: existente } = await db
       .from('leads')
       .select('id, nome, pipeline_atual')
       .eq('telefone', telefoneLimpo)
@@ -111,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     if (existente) {
       // Lead já existe — criar interação registrando o novo contato
-      await supabase.from('lead_interactions').insert({
+      await db.from('lead_interactions').insert({
         lead_id:   existente.id,
         tipo:      'whatsapp',
         conteudo:  `Novo contato via WhatsApp. ${input.descricao_caso ?? ''}`.trim(),
@@ -126,7 +130,7 @@ export async function POST(req: NextRequest) {
     // 5. Buscar fonte de aquisição padrão para WhatsApp se não fornecida
     let sourceId = input.source_id
     if (!sourceId) {
-      const { data: source } = await supabase
+      const { data: source } = await db
         .from('lead_sources')
         .select('id')
         .ilike('canal', input.canal_origem)
@@ -136,14 +140,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Criar o lead
-    const { data: novoLead, error: createError } = await supabase
+    const { data: novoLead, error: createError } = await db
       .from('leads')
       .insert({
         nome:            input.nome,
         telefone:        telefoneLimpo,
         email:           input.email ?? null,
         cpf:             input.cpf?.replace(/\D/g, '') ?? null,
-        area_juridica:   input.area_juridica as any ?? null,
+        area_juridica:   input.area_juridica ?? null,
         descricao_caso:  input.descricao_caso ?? null,
         urgencia:        input.urgencia,
         prazo_sensivel:  input.prazo_sensivel,
@@ -159,7 +163,7 @@ export async function POST(req: NextRequest) {
 
     // 7. Registrar primeira interação com a descrição do caso
     if (input.descricao_caso) {
-      await supabase.from('lead_interactions').insert({
+      await db.from('lead_interactions').insert({
         lead_id:    novoLead.id,
         tipo:       'whatsapp',
         conteudo:   input.descricao_caso,
@@ -169,7 +173,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 8. Notificar todos os usuários do time comercial
-    const { data: comerciais } = await supabase
+    const { data: comerciais } = await db
       .from('users')
       .select('id, roles!inner(name)')
       .eq('is_active', true)
@@ -177,7 +181,7 @@ export async function POST(req: NextRequest) {
 
     if (comerciais?.length) {
       await notifySvc.sendToMany(
-        comerciais.map(u => u.id),
+        (comerciais as any[]).map((u: any) => u.id),
         {
           tipo:        'novo_lead',
           titulo:      `Novo lead: ${novoLead.nome}`,

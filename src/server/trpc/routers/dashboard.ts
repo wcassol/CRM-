@@ -17,7 +17,8 @@ export const dashboardRouter = createTRPCRouter({
         ? ctx.session!.userId
         : undefined
 
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .rpc('get_dashboard_metrics', { p_usuario_id: userId ?? null })
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
@@ -41,11 +42,12 @@ export const dashboardRouter = createTRPCRouter({
         ? ctx.session!.userId
         : undefined
 
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .rpc('get_funnel_counts', { p_usuario_id: userId ?? null })
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as Array<{ etapa: string; total: number; valor_total: number }>
     }),
 
   /**
@@ -53,13 +55,14 @@ export const dashboardRouter = createTRPCRouter({
    */
   proximasReunioes: protectedProcedure
     .query(async ({ ctx }) => {
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .from('v_proximas_reunioes')
         .select('*')
         .limit(10)
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 
   /**
@@ -67,7 +70,8 @@ export const dashboardRouter = createTRPCRouter({
    */
   tarefasVencidas: protectedProcedure
     .query(async ({ ctx }) => {
-      const query = ctx.supabase
+      const db = ctx.supabase as any
+      const query = db
         .from('v_tasks_enriquecidas')
         .select('*')
         .eq('esta_vencida', true)
@@ -81,7 +85,7 @@ export const dashboardRouter = createTRPCRouter({
 
       const { data, error } = await query
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 
   /**
@@ -89,7 +93,8 @@ export const dashboardRouter = createTRPCRouter({
    */
   leadsRecentes: protectedProcedure
     .query(async ({ ctx }) => {
-      const query = ctx.supabase
+      const db = ctx.supabase as any
+      const query = db
         .from('v_leads_resumo')
         .select('*')
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
@@ -97,12 +102,12 @@ export const dashboardRouter = createTRPCRouter({
         .limit(10)
 
       if (ctx.session!.role !== 'admin') {
-        query.eq('responsavel_comercial_id' as any, ctx.session!.userId)
+        query.eq('responsavel_comercial_id', ctx.session!.userId)
       }
 
       const { data, error } = await query
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 
   /**
@@ -114,13 +119,14 @@ export const dashboardRouter = createTRPCRouter({
       data_fim:    z.string().date().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .rpc('get_conversion_rate', {
           p_data_inicio: input.data_inicio ?? undefined,
           p_data_fim:    input.data_fim ?? undefined,
         })
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 })

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — /api/n8n/follow-up
 // Chamado pelo n8n diariamente (workflow 02-follow-up-comercial)
@@ -19,11 +21,12 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminSupabase()
+  const db       = supabase as any
   const hoje     = new Date()
 
   // Leads que tiveram data_proxima_acao definida para hoje ou antes
   // E que ainda estão no pipeline comercial ativo
-  const { data: leadsFollowUp, error: e1 } = await supabase
+  const { data: leadsFollowUp, error: e1 } = await db
     .from('leads')
     .select(`
       id,
@@ -47,7 +50,7 @@ export async function GET(req: NextRequest) {
 
   // Leads quentes sem interação há mais de 24h
   const ontemISO = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-  const { data: leadsQuentes, error: e2 } = await supabase
+  const { data: leadsQuentes, error: e2 } = await db
     .from('leads')
     .select(`
       id,
@@ -72,7 +75,7 @@ export async function GET(req: NextRequest) {
 
   // Propostas enviadas há mais de 3 dias sem resposta
   const tresEDiasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-  const { data: propostasAbertas, error: e3 } = await supabase
+  const { data: propostasAbertas, error: e3 } = await db
     .from('leads')
     .select(`
       id,
@@ -99,9 +102,9 @@ export async function GET(req: NextRequest) {
     leads_quentes:    leadsQuentes     ?? [],
     propostas_abertas: propostasAbertas ?? [],
     totais: {
-      follow_up:         leadsFollowUp?.length    ?? 0,
-      leads_quentes:     leadsQuentes?.length     ?? 0,
-      propostas_abertas: propostasAbertas?.length ?? 0,
+      follow_up:         (leadsFollowUp as any[])?.length    ?? 0,
+      leads_quentes:     (leadsQuentes as any[])?.length     ?? 0,
+      propostas_abertas: (propostasAbertas as any[])?.length ?? 0,
     },
   })
 }

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — /api/n8n/documentos-pendentes
 // Chamado pelo n8n diariamente (workflow 06-documentos-lembrete)
@@ -52,15 +54,15 @@ export async function GET(req: NextRequest) {
 
   // Para cada lead, buscar quais documentos estão pendentes
   const resultado = await Promise.all(
-    (data ?? []).map(async (lead) => {
+    ((data ?? []) as any[]).map(async (lead: any) => {
       const { data: docs } = await supabase
         .from('lead_documents')
         .select('nome, obrigatorio, status')
         .eq('lead_id', lead.id)
         .neq('status', 'aprovado')
 
-      const pendentes = (docs ?? []).filter(d => d.status !== 'aprovado')
-      const obrigatoriosFaltando = pendentes.filter(d => d.obrigatorio)
+      const pendentes = (docs ?? []).filter((d: any) => d.status !== 'aprovado')
+      const obrigatoriosFaltando = pendentes.filter((d: any) => d.obrigatorio)
 
       return {
         ...lead,
@@ -74,7 +76,7 @@ export async function GET(req: NextRequest) {
   )
 
   // Filtrar apenas os que têm obrigatórios faltando
-  const comObrigatorios = resultado.filter(l => l.obrigatorios_faltando > 0)
+  const comObrigatorios = resultado.filter((l: any) => l.obrigatorios_faltando > 0)
 
   return NextResponse.json({
     gerado_em:    new Date().toISOString(),

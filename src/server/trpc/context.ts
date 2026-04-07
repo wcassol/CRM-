@@ -10,7 +10,7 @@ import type { AuthSession } from '@/types/domain.types'
 
 export interface TRPCContext {
   session:  AuthSession | null
-  supabase: ReturnType<typeof createServerClient<Database>>
+  supabase: any
   headers:  Headers
 }
 
@@ -24,9 +24,9 @@ export async function createTRPCContext(opts: { headers: Headers }): Promise<TRP
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
+        setAll: (cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) => {
           cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
+            cookieStore.set(name, value, options as never)
           )
         },
       },
@@ -41,7 +41,8 @@ export async function createTRPCContext(opts: { headers: Headers }): Promise<TRP
   }
 
   // Buscar dados de perfil (role, nome, avatar)
-  const { data: profile } = await supabase
+  const db = supabase as any
+  const { data: profile } = await db
     .from('users')
     .select('full_name, role_id, avatar_url, roles(name)')
     .eq('id', user.id)
@@ -55,7 +56,7 @@ export async function createTRPCContext(opts: { headers: Headers }): Promise<TRP
   const session: AuthSession = {
     userId:    user.id,
     email:     user.email!,
-    role:      (profile.roles as any)?.name ?? 'comercial',
+    role:      profile.roles?.name ?? 'comercial',
     fullName:  profile.full_name,
     avatarUrl: profile.avatar_url,
   }

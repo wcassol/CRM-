@@ -11,7 +11,7 @@ interface SendParams {
 }
 
 export class NotificationService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(private supabase: any) {}
 
   async send(params: SendParams): Promise<void> {
     const entry: DbNotificationInsert = {

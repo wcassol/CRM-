@@ -9,7 +9,7 @@ import type { AuthSession, PaginatedResult } from '@/types/domain.types'
 import type { LeadListInput } from '@/lib/validators/lead.schema'
 
 export class LeadService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(private supabase: any) {}
 
   async list(input: LeadListInput & { responsavel_id?: string }): Promise<PaginatedResult<any>> {
     let query = this.supabase
@@ -65,7 +65,7 @@ export class LeadService {
 
     const { data, error } = await query
     if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-    return data ?? []
+    return (data ?? []) as any[]
   }
 
   async findById(id: string, session: AuthSession) {
@@ -85,10 +85,10 @@ export class LeadService {
 
     if (error?.code === 'PGRST116') return null
     if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-    return data
+    return data as any
   }
 
-  async create(input: DbLeadInsert) {
+  async create(input: any) {
     const { data, error } = await this.supabase
       .from('leads')
       .insert(input)
@@ -98,10 +98,10 @@ export class LeadService {
     if (error) {
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
     }
-    return data
+    return data as any
   }
 
-  async update(id: string, input: DbLeadUpdate) {
+  async update(id: string, input: any) {
     const { data, error } = await this.supabase
       .from('leads')
       .update(input)
@@ -110,6 +110,6 @@ export class LeadService {
       .single()
 
     if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
-    return data
+    return data as any
   }
 }

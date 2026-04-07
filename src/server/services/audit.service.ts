@@ -12,7 +12,7 @@ interface AuditLogParams {
 }
 
 export class AuditService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(private supabase: any) {}
 
   async log(params: AuditLogParams): Promise<void> {
     const entry: DbAuditLogInsert = {
@@ -28,7 +28,7 @@ export class AuditService {
     }
 
     // Fire-and-forget — não bloqueia a resposta principal
-    this.supabase.from('audit_logs').insert(entry).then(({ error }) => {
+    ;(this.supabase as any).from('audit_logs').insert(entry).then(({ error }: any) => {
       if (error && process.env.NODE_ENV !== 'production') {
         console.error('[AuditService] Erro ao gravar log:', error.message)
       }

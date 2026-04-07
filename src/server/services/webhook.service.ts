@@ -28,7 +28,7 @@ interface ProcessResult {
 }
 
 export class WebhookService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(private supabase: any) {}
 
   /**
    * Registra o webhook na fila.

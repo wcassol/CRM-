@@ -8,33 +8,36 @@ export const usersRouter = createTRPCRouter({
   // Listar todos os papéis disponíveis (para selects de convite/edição)
   listRoles: protectedProcedure
     .query(async ({ ctx }) => {
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .from('roles')
         .select('id, name, display_name')
         .order('display_name')
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as Array<{ id: string; name: string; display_name: string }>
     }),
 
   // Todos os usuários ativos (para selects de responsável)
   list: protectedProcedure
     .query(async ({ ctx }) => {
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .from('users')
         .select('id, full_name, avatar_url, role_id, roles(name, display_name)')
         .eq('is_active', true)
         .order('full_name')
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as Array<{ id: string; full_name: string; avatar_url: string | null; role_id: string | null; is_active: boolean; roles: { name: string; display_name: string } | null }>
     }),
 
   // Usuários por role (para select "jurídicos disponíveis")
   byRole: protectedProcedure
     .input(z.enum(['admin', 'comercial', 'pre_juridico', 'juridico', 'financeiro']))
     .query(async ({ ctx, input }) => {
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .from('users')
         .select('id, full_name, avatar_url, roles!inner(name)')
         .eq('is_active', true)
@@ -42,20 +45,21 @@ export const usersRouter = createTRPCRouter({
         .order('full_name')
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as Array<{ id: string; full_name: string; avatar_url: string | null }>
     }),
 
   // Perfil do usuário logado
   me: protectedProcedure
     .query(async ({ ctx }) => {
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .from('users')
         .select('*, roles(name, display_name, permissions)')
         .eq('id', ctx.session!.userId)
         .single()
 
       if (error) throw new TRPCError({ code: 'NOT_FOUND' })
-      return data
+      return data as any
     }),
 
   // Atualizar próprio perfil
@@ -66,7 +70,8 @@ export const usersRouter = createTRPCRouter({
       avatar_url: z.string().url().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { data, error } = await ctx.supabase
+      const db = ctx.supabase as any
+      const { data, error } = await db
         .from('users')
         .update(input)
         .eq('id', ctx.session!.userId)
@@ -74,7 +79,7 @@ export const usersRouter = createTRPCRouter({
         .single()
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data
+      return data as Record<string, unknown>
     }),
 
   // Convidar usuário (admin)
@@ -102,7 +107,8 @@ export const usersRouter = createTRPCRouter({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Você não pode desativar sua própria conta.' })
       }
 
-      await ctx.supabase
+      const db = ctx.supabase as any
+      await db
         .from('users')
         .update({ is_active: input.is_active })
         .eq('id', input.id)
@@ -114,7 +120,8 @@ export const usersRouter = createTRPCRouter({
   updateRole: adminProcedure
     .input(z.object({ id: UuidSchema, role_id: UuidSchema }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.supabase
+      const db = ctx.supabase as any
+      await db
         .from('users')
         .update({ role_id: input.role_id })
         .eq('id', input.id)

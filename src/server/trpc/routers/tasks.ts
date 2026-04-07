@@ -35,7 +35,7 @@ export const tasksRouter = createTRPCRouter({
         )
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 
   create: protectedProcedure

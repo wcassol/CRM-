@@ -23,7 +23,7 @@ export class PipelineService {
   private audit: AuditService
   private notify: NotificationService
 
-  constructor(private supabase: SupabaseClient<Database>) {
+  constructor(private supabase: any) {
     this.audit  = new AuditService(supabase)
     this.notify = new NotificationService(supabase)
   }

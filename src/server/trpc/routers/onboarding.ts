@@ -22,7 +22,7 @@ export const onboardingRouter = createTRPCRouter({
 
       const { data, error } = await query
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 
   // Checklist completo de um lead

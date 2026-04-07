@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — WEBHOOK: Cal.com (agendamento de reuniões)
 //
@@ -116,6 +118,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const db        = supabase as any
     const booking   = input.payload
     const leadId    = extractLeadId(booking.responses)
     const attendee  = booking.attendees[0]
@@ -126,7 +129,7 @@ export async function POST(req: NextRequest) {
         let resolvedLeadId = leadId
 
         if (!resolvedLeadId && attendee?.email) {
-          const { data: lead } = await supabase
+          const { data: lead } = await db
             .from('leads')
             .select('id')
             .eq('email', attendee.email)
@@ -137,7 +140,7 @@ export async function POST(req: NextRequest) {
 
         if (!resolvedLeadId) {
           // Sem lead_id — criar appointment sem vínculo (será vinculado manualmente)
-          await supabase.from('appointments').insert({
+          await db.from('appointments').insert({
             lead_id:        null as any,  // tabela pode aceitar NULL temporariamente
             calcom_uid:     booking.uid,
             titulo:         booking.title,
@@ -154,7 +157,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Criar appointment vinculado ao lead
-        const { data: appt } = await supabase
+        const { data: appt } = await db
           .from('appointments')
           .insert({
             lead_id:            resolvedLeadId,
@@ -172,14 +175,14 @@ export async function POST(req: NextRequest) {
           .single()
 
         // Avançar etapa do lead para reuniao_agendada (se ainda não avançou)
-        await supabase
+        await db
           .from('leads')
           .update({ etapa_comercial: 'reuniao_agendada' })
           .eq('id', resolvedLeadId)
           .in('etapa_comercial', ['novo_lead', 'triagem_concluida', 'aguardando_documentos', 'em_analise_viabilidade'])
 
         // Registrar na timeline
-        await supabase.from('lead_interactions').insert({
+        await db.from('lead_interactions').insert({
           lead_id:    resolvedLeadId,
           tipo:       'reuniao',
           conteudo:   `Reunião agendada para ${new Date(booking.startTime).toLocaleString('pt-BR')}. ${booking.meetingUrl ? `Link: ${booking.meetingUrl}` : ''}`,
@@ -188,7 +191,7 @@ export async function POST(req: NextRequest) {
         })
 
         // Notificar responsável
-        const { data: lead } = await supabase
+        const { data: lead } = await db
           .from('leads')
           .select('nome, responsavel_comercial_id')
           .eq('id', resolvedLeadId)
@@ -217,7 +220,7 @@ export async function POST(req: NextRequest) {
 
       case 'BOOKING_RESCHEDULED': {
         // Atualizar data/hora da reunião
-        const { data: appt } = await supabase
+        const { data: appt } = await db
           .from('appointments')
           .update({
             data_hora:     booking.startTime,
@@ -229,7 +232,7 @@ export async function POST(req: NextRequest) {
           .maybeSingle()
 
         if (appt?.lead_id) {
-          await supabase.from('lead_interactions').insert({
+          await db.from('lead_interactions').insert({
             lead_id:    appt.lead_id,
             tipo:       'sistema',
             conteudo:   `Reunião reagendada para ${new Date(booking.startTime).toLocaleString('pt-BR')}.`,
@@ -241,7 +244,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'BOOKING_CANCELLED': {
-        const { data: appt } = await supabase
+        const { data: appt } = await db
           .from('appointments')
           .update({ status: 'cancelada' })
           .eq('calcom_uid', booking.uid)
@@ -249,7 +252,7 @@ export async function POST(req: NextRequest) {
           .maybeSingle()
 
         if (appt?.lead_id) {
-          await supabase.from('lead_interactions').insert({
+          await db.from('lead_interactions').insert({
             lead_id:    appt.lead_id,
             tipo:       'sistema',
             conteudo:   `Reunião cancelada.${booking.cancellationReason ? ` Motivo: ${booking.cancellationReason}` : ''}`,
@@ -258,7 +261,7 @@ export async function POST(req: NextRequest) {
           })
 
           // Notificar responsável
-          const { data: lead } = await supabase
+          const { data: lead } = await db
             .from('leads')
             .select('nome, responsavel_comercial_id')
             .eq('id', appt.lead_id)
@@ -280,7 +283,7 @@ export async function POST(req: NextRequest) {
 
       case 'MEETING_ENDED': {
         // Reunião encerrada — marcar como realizada e avançar etapa
-        const { data: appt } = await supabase
+        const { data: appt } = await db
           .from('appointments')
           .update({ status: 'realizada' })
           .eq('calcom_uid', booking.uid)
@@ -289,13 +292,13 @@ export async function POST(req: NextRequest) {
 
         if (appt?.lead_id) {
           // Avançar etapa para reuniao_realizada
-          await supabase
+          await db
             .from('leads')
             .update({ etapa_comercial: 'reuniao_realizada' })
             .eq('id', appt.lead_id)
             .eq('etapa_comercial', 'reuniao_agendada')
 
-          await supabase.from('lead_interactions').insert({
+          await db.from('lead_interactions').insert({
             lead_id:    appt.lead_id,
             tipo:       'reuniao',
             conteudo:   `Reunião encerrada (Cal.com). Duração: ${Math.round((new Date(booking.endTime).getTime() - new Date(booking.startTime).getTime()) / 60000)} minutos.`,

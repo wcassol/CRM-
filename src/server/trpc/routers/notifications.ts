@@ -17,7 +17,7 @@ export const notificationsRouter = createTRPCRouter({
         .limit(20)
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return { notifications: data ?? [], total: data?.length ?? 0 }
+      return { notifications: (data ?? []) as any[], total: data?.length ?? 0 }
     }),
 
   // Marcar como lida

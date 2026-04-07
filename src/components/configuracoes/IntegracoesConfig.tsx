@@ -84,10 +84,11 @@ function IntegrationCard({ meta }: { meta: IntegrationMeta }) {
   const utils     = trpc.useUtils()
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
 
-  const { data } = trpc.integracoes.get.useQuery({ chave: meta.key })
+  const chave = meta.key as 'zapsign' | 'asaas' | 'calcom' | 'n8n' | 'astrea' | 'zapconnecta'
+  const { data } = trpc.integracoes.get.useQuery({ chave })
   const save     = trpc.integracoes.save.useMutation({
     onSuccess: () => {
-      utils.integracoes.get.invalidate({ chave: meta.key })
+      utils.integracoes.get.invalidate({ chave })
       toast({ title: `${meta.label} configurado com sucesso!` })
     },
     onError: (e) => toast({ title: e.message, variant: 'destructive' }),
@@ -132,7 +133,7 @@ function IntegrationCard({ meta }: { meta: IntegrationMeta }) {
 
         {hasCreds && (
           <button
-            onClick={() => testConn.mutate({ chave: meta.key })}
+            onClick={() => testConn.mutate({ chave })}
             disabled={testConn.isPending}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
@@ -145,7 +146,7 @@ function IntegrationCard({ meta }: { meta: IntegrationMeta }) {
         )}
       </div>
 
-      <form onSubmit={handleSubmit(d => save.mutate({ chave: meta.key, config: d }))} className="p-5">
+      <form onSubmit={handleSubmit(d => save.mutate({ chave, config: d }))} className="p-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {meta.fields.map(field => (
             <div key={field.name}>

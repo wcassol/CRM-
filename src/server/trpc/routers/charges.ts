@@ -16,7 +16,7 @@ export const chargesRouter = createTRPCRouter({
         .order('vencimento', { ascending: true })
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 
   // Visão financeira global
@@ -29,7 +29,7 @@ export const chargesRouter = createTRPCRouter({
         .limit(100)
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 
   create: protectedProcedure

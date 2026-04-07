@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — WEBHOOK: ZapSign (assinatura de contratos)
 //
@@ -86,8 +88,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const db = supabase as any
+
     // 4. Buscar contrato pelo token ZapSign
-    const { data: contract, error: contractError } = await supabase
+    const { data: contract, error: contractError } = await db
       .from('contracts')
       .select('id, lead_id, status, proposal_id')
       .eq('zapsign_token', input.document.token)
@@ -105,7 +109,7 @@ export async function POST(req: NextRequest) {
     switch (input.event_type) {
       case 'signer_signed': {
         // Um signatário assinou — registrar na timeline
-        await supabase.from('lead_interactions').insert({
+        await db.from('lead_interactions').insert({
           lead_id:   leadId,
           tipo:      'sistema',
           conteudo:  `${input.signer?.name ?? 'Signatário'} assinou o contrato no ZapSign.`,
@@ -117,7 +121,7 @@ export async function POST(req: NextRequest) {
 
       case 'doc_signed': {
         // Todos assinaram — atualizar contrato e avançar etapa
-        await supabase
+        await db
           .from('contracts')
           .update({
             status:     'assinado',
@@ -126,14 +130,14 @@ export async function POST(req: NextRequest) {
           .eq('id', contract.id)
 
         // Avança etapa do lead para pagamento_pendente
-        await supabase
+        await db
           .from('leads')
           .update({ etapa_comercial: 'pagamento_pendente' })
           .eq('id', leadId)
           .eq('etapa_comercial', 'contrato_enviado')
 
         // Registrar na timeline
-        await supabase.from('lead_interactions').insert({
+        await db.from('lead_interactions').insert({
           lead_id:    leadId,
           tipo:       'sistema',
           conteudo:   'Contrato assinado digitalmente via ZapSign.',
@@ -142,7 +146,7 @@ export async function POST(req: NextRequest) {
         })
 
         // Notificar responsável comercial
-        const { data: lead } = await supabase
+        const { data: lead } = await db
           .from('leads')
           .select('nome, responsavel_comercial_id')
           .eq('id', leadId)
@@ -171,12 +175,12 @@ export async function POST(req: NextRequest) {
 
       case 'doc_refused': {
         // Contrato recusado — notificar e registrar
-        await supabase
+        await db
           .from('contracts')
           .update({ status: 'recusado' })
           .eq('id', contract.id)
 
-        await supabase.from('lead_interactions').insert({
+        await db.from('lead_interactions').insert({
           lead_id:    leadId,
           tipo:       'sistema',
           conteudo:   `Assinatura recusada por ${input.signer?.name ?? 'signatário'}.`,
@@ -184,7 +188,7 @@ export async function POST(req: NextRequest) {
           metadata:   { zapsign_token: input.document.token },
         })
 
-        const { data: lead } = await supabase
+        const { data: lead } = await db
           .from('leads')
           .select('nome, responsavel_comercial_id')
           .eq('id', leadId)

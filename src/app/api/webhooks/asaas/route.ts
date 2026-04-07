@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — WEBHOOK: Asaas (cobranças e pagamentos)
 //
@@ -90,12 +92,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const db = supabase as any
+
     // 4. Buscar cobrança pelo asaas_id
-    const { data: charge } = await supabase
+    const { data: chargeRaw } = await db
       .from('charges')
       .select('id, lead_id, status, valor')
       .eq('asaas_id', input.payment.id)
       .maybeSingle()
+    const charge = chargeRaw as any
 
     // Se não encontrar pelo asaas_id, tentar pelo externalReference (lead_id)
     let leadId: string | null = charge?.lead_id ?? input.payment.externalReference ?? null
@@ -115,7 +120,7 @@ export async function POST(req: NextRequest) {
         updateData.pago_em = input.payment.paymentDate
       }
 
-      await supabase
+      await db
         .from('charges')
         .update(updateData)
         .eq('id', chargeId)
@@ -126,7 +131,7 @@ export async function POST(req: NextRequest) {
       case 'PAYMENT_RECEIVED':
       case 'PAYMENT_CONFIRMED': {
         // RN-05: Pagamento confirmado → registrar na timeline
-        await supabase.from('lead_interactions').insert({
+        await db.from('lead_interactions').insert({
           lead_id:    leadId,
           tipo:       'sistema',
           conteudo:   `Pagamento confirmado via Asaas. Valor: R$ ${input.payment.value.toFixed(2)}`,
@@ -141,7 +146,7 @@ export async function POST(req: NextRequest) {
         // Verificar se é o pagamento de honorários (permite onboarding — RN-05)
         // A trigger do banco `enforce_onboarding_after_payment` já verifica isso.
         // Aqui apenas avançamos a etapa.
-        const { data: lead } = await supabase
+        const { data: lead } = await db
           .from('leads')
           .select('etapa_comercial, pipeline_atual, responsavel_comercial_id, responsavel_juridico_id, nome')
           .eq('id', leadId)
@@ -181,7 +186,7 @@ export async function POST(req: NextRequest) {
 
       case 'PAYMENT_OVERDUE': {
         // Cobrança vencida — notificar financeiro
-        await supabase.from('lead_interactions').insert({
+        await db.from('lead_interactions').insert({
           lead_id:    leadId,
           tipo:       'sistema',
           conteudo:   `Cobrança vencida em ${input.payment.dueDate}. Valor: R$ ${input.payment.value.toFixed(2)}`,
@@ -189,24 +194,25 @@ export async function POST(req: NextRequest) {
           metadata:   { asaas_id: input.payment.id, due_date: input.payment.dueDate },
         })
 
-        const { data: financeiros } = await supabase
+        const { data: financeirosRaw } = await db
           .from('users')
           .select('id, roles!inner(name)')
           .eq('is_active', true)
           .eq('roles.name', 'financeiro')
+        const financeiros = financeirosRaw as any[]
 
         if (financeiros?.length) {
-          const { data: lead } = await supabase
+          const { data: leadNome } = await db
             .from('leads')
             .select('nome')
             .eq('id', leadId)
             .single()
 
           await notifySvc.sendToMany(
-            financeiros.map(u => u.id),
+            financeiros.map((u: any) => u.id),
             {
               tipo:        'cobranca_vencida',
-              titulo:      `Cobrança vencida: ${lead?.nome ?? 'Cliente'}`,
+              titulo:      `Cobrança vencida: ${leadNome?.nome ?? 'Cliente'}`,
               mensagem:    `Valor: R$ ${input.payment.value.toFixed(2)} — venceu em ${input.payment.dueDate}`,
               entity_type: 'lead',
               entity_id:   leadId,
@@ -217,7 +223,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'PAYMENT_REFUNDED': {
-        await supabase.from('lead_interactions').insert({
+        await db.from('lead_interactions').insert({
           lead_id:    leadId,
           tipo:       'sistema',
           conteudo:   `Pagamento estornado. Valor: R$ ${input.payment.value.toFixed(2)}`,

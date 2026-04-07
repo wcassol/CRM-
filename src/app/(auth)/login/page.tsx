@@ -17,7 +17,6 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const router = useRouter()
-  const supabase = createClient()
   const [showPass, setShowPass] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
@@ -27,6 +26,7 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginForm) {
     setAuthError(null)
+    const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({
       email:    data.email,
       password: data.password,

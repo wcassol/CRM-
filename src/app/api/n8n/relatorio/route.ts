@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — /api/n8n/relatorio
 // Chamado pelo n8n toda segunda-feira às 8h (workflow 09-relatorio-semanal)
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
   const fim = fimSemana.toISOString()
 
   // Métricas da semana via função SQL
-  const { data: metrics } = await supabase
+  const { data: metrics } = await (supabase as any)
     .rpc('get_dashboard_metrics', { p_usuario_id: null })
 
   // Leads criados na semana
@@ -70,10 +72,10 @@ export async function GET(req: NextRequest) {
     .gte('pago_em', ini)
     .lte('pago_em', fim)
 
-  const receitaSemana = (cobrancasRecebidas ?? []).reduce((sum, c) => sum + (c.valor ?? 0), 0)
+  const receitaSemana = ((cobrancasRecebidas ?? []) as any[]).reduce((sum: number, c: any) => sum + (c.valor ?? 0), 0)
 
   // Leads por etapa (funil atual)
-  const { data: funil } = await supabase
+  const { data: funil } = await (supabase as any)
     .rpc('get_funnel_counts', { p_usuario_id: null })
 
   // Tarefas concluídas na semana
@@ -87,7 +89,7 @@ export async function GET(req: NextRequest) {
   // Top 5 responsáveis por leads fechados (contrato assinado)
   const { data: topComerciais } = await supabase
     .from('leads')
-    .select('responsavel_comercial_id, responsavel_comercial:users!leads_responsavel_comercial_id_fkey(full_name)')
+    .select('responsavel_comercial_id')
     .eq('etapa_comercial', 'pagamento_confirmado')
     .gte('updated_at', ini)
     .lte('updated_at', fim)
@@ -96,9 +98,9 @@ export async function GET(req: NextRequest) {
 
   // Agrupar por responsável
   const contagemComerciais: Record<string, { nome: string; total: number }> = {}
-  ;(topComerciais ?? []).forEach(l => {
+  ;(topComerciais ?? []).forEach((l: any) => {
     const id   = l.responsavel_comercial_id!
-    const nome = (l.responsavel_comercial as any)?.full_name ?? 'Desconhecido'
+    const nome = l.responsavel_comercial?.full_name ?? 'Desconhecido'
     if (!contagemComerciais[id]) contagemComerciais[id] = { nome, total: 0 }
     contagemComerciais[id]!.total++
   })

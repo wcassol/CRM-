@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 // =============================================================================
 // CRM JURÍDICO — tRPC HTTP handler (Next.js App Router)
 // Expõe todos os 12 routers em /api/trpc/*

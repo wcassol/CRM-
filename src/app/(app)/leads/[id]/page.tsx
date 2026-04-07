@@ -247,11 +247,12 @@ function CobrancaTab({ leadId }: { leadId: string }) {
 function OnboardingTab({ leadId }: { leadId: string }) {
   const { data } = trpc.onboarding.byLead.useQuery(leadId)
   if (!data) return <div className="text-sm text-gray-400 p-4">Onboarding ainda não iniciado.</div>
+  const onboarding = data as any
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-6">
       <p className="text-sm font-medium mb-3">Checklist de Onboarding</p>
       <div className="space-y-2">
-        {(data.items ?? []).map((item: any) => (
+        {((onboarding.items ?? []) as any[]).map((item: any) => (
           <div key={item.id} className="flex items-center gap-2 text-sm">
             <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center',
               item.status === 'concluido' ? 'bg-green-500 border-green-500' : 'border-gray-300'

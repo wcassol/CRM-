@@ -275,6 +275,6 @@ export const leadsRouter = createTRPCRouter({
         .order('created_at', { ascending: false })
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' })
-      return data ?? []
+      return (data ?? []) as any[]
     }),
 })
