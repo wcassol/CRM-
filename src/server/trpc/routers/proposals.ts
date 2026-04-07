@@ -10,7 +10,7 @@ export const proposalsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.supabase
         .from('proposals')
-        .select('*, criado_por_user:users(id, full_name)')
+        .select('*')
         .eq('lead_id', input)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })

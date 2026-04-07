@@ -164,7 +164,7 @@ function ReunioesTab({ leadId }: { leadId: string }) {
   const { data, isLoading } = trpc.appointments.byLead.useQuery(leadId)
   return (
     <div className="space-y-3">
-      {(data ?? []).map(a => (
+      {((data ?? []) as any[]).map((a: any) => (
         <div key={a.id} className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="font-medium text-sm">{a.titulo}</p>
           <p className="text-xs text-gray-500">{a.data_hora}</p>
@@ -183,7 +183,7 @@ function PropostaTab({ leadId }: { leadId: string }) {
   const { data } = trpc.proposals.byLead.useQuery(leadId)
   return (
     <div className="space-y-3">
-      {(data ?? []).map(p => (
+      {((data ?? []) as any[]).map((p: any) => (
         <div key={p.id} className="bg-white rounded-xl border border-gray-100 p-4">
           <div className="flex justify-between">
             <span className="font-semibold text-green-700">R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
@@ -200,7 +200,7 @@ function ContratoTab({ leadId }: { leadId: string }) {
   const { data } = trpc.contracts.byLead.useQuery(leadId)
   return (
     <div className="space-y-3">
-      {(data ?? []).map(c => (
+      {((data ?? []) as any[]).map((c: any) => (
         <div key={c.id} className="bg-white rounded-xl border border-gray-100 p-4">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Contrato</span>
@@ -221,7 +221,7 @@ function CobrancaTab({ leadId }: { leadId: string }) {
   const { data } = trpc.charges.byLead.useQuery(leadId)
   return (
     <div className="space-y-3">
-      {(data ?? []).map(c => (
+      {((data ?? []) as any[]).map((c: any) => (
         <div key={c.id} className="bg-white rounded-xl border border-gray-100 p-4">
           <div className="flex justify-between">
             <span className="font-semibold">R$ {c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>

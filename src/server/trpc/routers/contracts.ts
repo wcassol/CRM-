@@ -11,7 +11,7 @@ export const contractsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.supabase
         .from('contracts')
-        .select('*, proposal:proposals(id, valor, condicao_pagamento), enviado_por_user:users(id, full_name)')
+        .select('*')
         .eq('lead_id', input)
         .order('created_at', { ascending: false })
 
