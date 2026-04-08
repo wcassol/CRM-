@@ -20,7 +20,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Supabase unreachable — redireciona para login
+  }
   if (!user) redirect('/login')
 
   return (

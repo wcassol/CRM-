@@ -36,7 +36,7 @@ export default function LoginPage() {
       setAuthError(
         error.message === 'Invalid login credentials'
           ? 'E-mail ou senha incorretos.'
-          : 'Erro ao entrar. Tente novamente.'
+          : `Erro: ${error.message}`
       )
       return
     }
