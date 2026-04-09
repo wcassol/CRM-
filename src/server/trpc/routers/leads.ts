@@ -263,6 +263,56 @@ export const leadsRouter = createTRPCRouter({
     }),
 
   /**
+   * Documentos do lead
+   */
+  documentsByLead: protectedProcedure
+    .input(UuidSchema)
+    .query(async ({ ctx, input }) => {
+      const { data } = await ctx.supabase
+        .from('lead_documents')
+        .select('*, requirement:document_requirements(nome, obrigatorio, area_juridica)')
+        .eq('lead_id', input)
+        .order('created_at', { ascending: false })
+      return (data ?? []) as any[]
+    }),
+
+  /**
+   * Atualizar status de um documento do lead
+   */
+  updateDocument: protectedProcedure
+    .input(z.object({
+      id:     z.string().uuid(),
+      status: z.enum(['solicitado', 'recebido', 'validado', 'rejeitado']),
+      observacao_analista: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input
+      const { error } = await ctx.supabase
+        .from('lead_documents')
+        .update({ ...data, updated_at: new Date().toISOString() })
+        .eq('id', id)
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return { success: true }
+    }),
+
+  /**
+   * Solicitar documento ao lead
+   */
+  addDocument: protectedProcedure
+    .input(z.object({
+      lead_id:        z.string().uuid(),
+      nome:           z.string().min(2).max(200),
+      requirement_id: z.string().uuid().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { error } = await ctx.supabase
+        .from('lead_documents')
+        .insert({ ...input, status: 'solicitado' })
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return { success: true }
+    }),
+
+  /**
    * Histórico de pipeline do lead
    */
   pipelineHistory: protectedProcedure

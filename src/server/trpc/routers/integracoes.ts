@@ -12,12 +12,15 @@ export const integracoesRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const db = ctx.supabase as any
       const { data } = await db
-        .from('integration_configs')
-        .select('chave, ativo, config')
-        .eq('chave', input.chave)
+        .from('integrations')
+        .select('nome, ativo, config')
+        .eq('nome', input.chave)
         .single()
 
-      return data as { chave: string; ativo: boolean; config: Record<string, string> } | null
+      if (!data) return null
+      return { chave: data.nome, ativo: data.ativo, config: data.config ?? {} } as {
+        chave: string; ativo: boolean; config: Record<string, string>
+      }
     }),
 
   // Salvar/atualizar configuração
@@ -29,10 +32,10 @@ export const integracoesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const db = ctx.supabase as any
       const { error } = await db
-        .from('integration_configs')
+        .from('integrations')
         .upsert(
-          { chave: input.chave, config: input.config, ativo: true },
-          { onConflict: 'chave' }
+          { nome: input.chave, config: input.config, ativo: true },
+          { onConflict: 'nome' }
         )
 
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
@@ -45,9 +48,9 @@ export const integracoesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const db = ctx.supabase as any
       const { data } = await db
-        .from('integration_configs')
+        .from('integrations')
         .select('config, ativo')
-        .eq('chave', input.chave)
+        .eq('nome', input.chave)
         .single()
 
       const config = data as { config: Record<string, string>; ativo: boolean } | null
@@ -56,7 +59,6 @@ export const integracoesRouter = createTRPCRouter({
         return { ok: false, message: 'Integração não configurada' }
       }
 
-      // Simple connectivity check per integration type
       try {
         switch (input.chave) {
           case 'n8n': {
@@ -80,7 +82,7 @@ export const integracoesRouter = createTRPCRouter({
           default:
             return { ok: true, message: 'Verificação não disponível para esta integração' }
         }
-      } catch (e) {
+      } catch {
         return { ok: false, message: 'Timeout ou erro de rede' }
       }
     }),
