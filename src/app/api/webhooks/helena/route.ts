@@ -205,7 +205,6 @@ export async function POST(req: NextRequest) {
       pipeline_atual:  'comercial',
       etapa_comercial: 'novo_lead',
       temperatura:     'morno',
-      canal_origem:    'whatsapp',
     })
     .select('id, nome')
     .single()
