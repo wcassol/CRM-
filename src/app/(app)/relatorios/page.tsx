@@ -1,19 +1,20 @@
 'use client'
 
-import { BarChart3, TrendingUp, Users, DollarSign, FileText, Calendar } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, CreditCard, FileText, Calendar, GitMerge, CheckSquare } from 'lucide-react'
 import { Topbar } from '@/components/layout/Topbar'
 import { trpc } from '@/lib/trpc/client'
 
 export default function RelatoriosPage() {
-  const { data: stats } = trpc.dashboard.stats.useQuery()
+  const { data: metrics, isLoading } = trpc.dashboard.metrics.useQuery()
 
   const cards = [
-    { label: 'Total de Leads',       value: stats?.total_leads      ?? '—', icon: Users,      color: 'bg-blue-50 text-blue-600' },
-    { label: 'Leads Ativos',         value: stats?.leads_ativos     ?? '—', icon: TrendingUp,  color: 'bg-green-50 text-green-600' },
-    { label: 'Fechados este mês',    value: stats?.fechados_mes     ?? '—', icon: FileText,    color: 'bg-purple-50 text-purple-600' },
-    { label: 'Receita Estimada',     value: stats?.valor_pipeline   ? `R$ ${Number(stats.valor_pipeline).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—', icon: DollarSign, color: 'bg-amber-50 text-amber-600' },
-    { label: 'Reuniões Agendadas',   value: stats?.reunioes_semana  ?? '—', icon: Calendar,    color: 'bg-rose-50 text-rose-600' },
-    { label: 'Taxa de Conversão',    value: stats?.taxa_conversao   ? `${stats.taxa_conversao}%` : '—', icon: BarChart3, color: 'bg-indigo-50 text-indigo-600' },
+    { label: 'Leads hoje',           value: metrics?.leads_hoje          ?? '—', icon: Users,      color: 'from-purple-500 to-purple-600', shadow: 'shadow-[0_8px_24px_rgba(139,92,246,0.3)]' },
+    { label: 'Reuniões hoje',        value: metrics?.reunioes_hoje       ?? '—', icon: Calendar,   color: 'from-blue-500 to-blue-600',     shadow: 'shadow-[0_8px_24px_rgba(59,130,246,0.3)]' },
+    { label: 'Propostas abertas',    value: metrics?.propostas_abertas   ?? '—', icon: FileText,   color: 'from-amber-400 to-orange-500',  shadow: 'shadow-[0_8px_24px_rgba(245,158,11,0.3)]' },
+    { label: 'Contratos pendentes',  value: metrics?.contratos_pendentes ?? '—', icon: TrendingUp, color: 'from-slate-500 to-slate-700',   shadow: 'shadow-[0_8px_24px_rgba(100,116,139,0.3)]' },
+    { label: 'Cobranças pendentes',  value: metrics?.cobracas_pendentes  ?? '—', icon: CreditCard, color: 'from-emerald-500 to-emerald-600', shadow: 'shadow-[0_8px_24px_rgba(16,185,129,0.3)]' },
+    { label: 'Tarefas vencidas',     value: metrics?.tarefas_vencidas    ?? '—', icon: CheckSquare,color: 'from-red-500 to-rose-600',      shadow: 'shadow-[0_8px_24px_rgba(239,68,68,0.3)]' },
+    { label: 'Em onboarding',        value: metrics?.onboardings_ativos  ?? '—', icon: GitMerge,   color: 'from-teal-500 to-teal-600',    shadow: 'shadow-[0_8px_24px_rgba(20,184,166,0.3)]' },
   ]
 
   return (
@@ -24,17 +25,26 @@ export default function RelatoriosPage() {
 
           {/* KPI Cards */}
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Resumo Geral</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {cards.map(({ label, value, icon: Icon, color }) => (
-                <div key={label} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm text-gray-500">{label}</span>
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
-                      <Icon className="w-5 h-5" />
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Resumo Geral</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {cards.map(({ label, value, icon: Icon, color, shadow }) => (
+                <div key={label} className={`bg-gradient-to-br ${color} ${shadow} rounded-2xl p-5 text-white`}>
+                  {isLoading ? (
+                    <div className="animate-pulse space-y-2">
+                      <div className="h-3 w-3/4 bg-white/30 rounded" />
+                      <div className="h-8 w-1/2 bg-white/30 rounded mt-2" />
                     </div>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{String(value)}</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-white/70 font-semibold uppercase tracking-wide">{label}</span>
+                        <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <p className="text-3xl font-bold">{String(value)}</p>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -42,7 +52,7 @@ export default function RelatoriosPage() {
 
           {/* Pipeline Funnel */}
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Funil do Pipeline</h2>
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Funil do Pipeline</h2>
             <PipelineFunnel />
           </section>
 
@@ -56,13 +66,13 @@ function PipelineFunnel() {
   const { data, isLoading } = trpc.dashboard.funnel.useQuery()
 
   if (isLoading) return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-3">
-      {[1,2,3,4].map(i => <div key={i} className="h-10 rounded-lg bg-gray-100 animate-pulse" />)}
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100 p-6 space-y-3 shadow-[0_4px_24px_rgba(139,92,246,0.08)]">
+      {[1,2,3,4].map(i => <div key={i} className="h-10 rounded-xl bg-purple-50 animate-pulse" />)}
     </div>
   )
 
   if (!data?.length) return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-sm text-gray-400">
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100 p-8 text-center text-sm text-gray-400 shadow-[0_4px_24px_rgba(139,92,246,0.08)]">
       Sem dados de pipeline ainda.
     </div>
   )
@@ -70,23 +80,23 @@ function PipelineFunnel() {
   const max = Math.max(...data.map(d => d.total))
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-3">
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100 p-6 space-y-4 shadow-[0_4px_24px_rgba(139,92,246,0.08)]">
       {data.map(({ etapa, total, valor_total }) => (
-        <div key={etapa} className="space-y-1">
+        <div key={etapa} className="space-y-1.5">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-gray-700 capitalize">{etapa.replace(/_/g, ' ')}</span>
+            <span className="font-semibold text-gray-700 capitalize">{etapa.replace(/_/g, ' ')}</span>
             <div className="flex items-center gap-4 text-gray-500">
-              <span>{total} leads</span>
+              <span className="text-xs">{total} leads</span>
               {valor_total > 0 && (
-                <span className="text-green-600 font-medium">
+                <span className="text-emerald-600 font-semibold text-xs">
                   R$ {Number(valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               )}
             </div>
           </div>
-          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-3 bg-purple-50 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all"
+              className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all"
               style={{ width: `${max > 0 ? (total / max) * 100 : 0}%` }}
             />
           </div>
