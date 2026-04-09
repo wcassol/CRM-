@@ -152,7 +152,7 @@ const TEMPERATURA_LABELS: Record<string, string> = { frio: 'Frio', morno: 'Morno
 function TriagemTab({ lead }: { lead: any }) {
   const { toast } = useToast()
   const utils = trpc.useUtils()
-  const { data: lossReasons } = trpc.settings.listLossReasons.useQuery()
+  const { data: lossReasons } = trpc.settings.listLossReasons.useQuery({})
 
   const salvar = trpc.leads.salvarTriagem.useMutation({
     onSuccess: () => {
