@@ -23,6 +23,15 @@ export const integracoesRouter = createTRPCRouter({
       }
     }),
 
+const DISPLAY_NAMES: Record<string, string> = {
+  zapsign:      'ZapSign',
+  asaas:        'Asaas',
+  calcom:       'Cal.com',
+  n8n:          'n8n',
+  astrea:       'Astrea',
+  zapconnecta:  'Helena CRM (WhatsApp)',
+}
+
   // Salvar/atualizar configuração
   save: adminProcedure
     .input(z.object({
@@ -34,7 +43,12 @@ export const integracoesRouter = createTRPCRouter({
       const { error } = await db
         .from('integrations')
         .upsert(
-          { nome: input.chave, config: input.config, ativo: true },
+          {
+            nome:         input.chave,
+            display_name: DISPLAY_NAMES[input.chave] ?? input.chave,
+            config:       input.config,
+            ativo:        true,
+          },
           { onConflict: 'nome' }
         )
 
