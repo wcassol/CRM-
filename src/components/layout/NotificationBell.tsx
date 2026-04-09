@@ -14,7 +14,7 @@ export function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        className="relative p-2 rounded-xl text-gray-500 hover:bg-purple-50 hover:text-purple-600 transition-colors"
       >
         <Bell className="w-5 h-5" />
         {total > 0 && (
@@ -27,7 +27,7 @@ export function NotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-20 overflow-hidden">
+          <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-[0_12px_40px_rgba(139,92,246,0.15)] border border-purple-100 z-20 overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <span className="font-semibold text-sm text-gray-900">
@@ -36,7 +36,7 @@ export function NotificationBell() {
               {total > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-xs text-purple-600 hover:text-purple-700 font-medium"
                 >
                   Marcar todas como lidas
                 </button>
@@ -58,7 +58,7 @@ export function NotificationBell() {
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{n.titulo}</p>
                         {n.mensagem && (

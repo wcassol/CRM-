@@ -74,8 +74,8 @@ export function DashboardView() {
 
       {/* Funil + Reuniões */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Funil Comercial</h2>
+        <div className="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100 p-5 shadow-[0_4px_24px_rgba(139,92,246,0.08)]">
+          <h2 className="text-sm font-bold text-gray-900 mb-4">Funil Comercial</h2>
           <FunnelChart data={funnel ?? []} loading={loadingFunnel} />
         </div>
         <AppointmentsWidget />

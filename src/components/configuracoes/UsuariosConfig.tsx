@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Loader2, UserX, X } from 'lucide-react'
+import { Plus, Loader2, UserX, UserCheck, X } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 import { useToast } from '@/hooks/useToast'
 import { cn } from '@/lib/utils/cn'
@@ -60,9 +60,9 @@ export function UsuariosConfig() {
   })
 
   const toggleActive = trpc.users.toggleActive.useMutation({
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       utils.users.list.invalidate()
-      toast({ title: 'Usuário desativado.' })
+      toast({ title: vars.is_active ? 'Usuário ativado.' : 'Usuário desativado.' })
     },
     onError: (e) => toast({ title: e.message, variant: 'destructive' }),
   })
@@ -207,13 +207,21 @@ export function UsuariosConfig() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      {u.is_active && (
+                      {u.is_active ? (
                         <button
                           onClick={() => toggleActive.mutate({ id: u.id, is_active: false })}
                           title="Desativar usuário"
                           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                         >
                           <UserX className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => toggleActive.mutate({ id: u.id, is_active: true })}
+                          title="Ativar usuário"
+                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                        >
+                          <UserCheck className="w-4 h-4" />
                         </button>
                       )}
                     </td>

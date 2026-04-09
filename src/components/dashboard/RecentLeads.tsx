@@ -12,10 +12,10 @@ export function RecentLeads() {
   const { data, isLoading } = trpc.dashboard.leadsRecentes.useQuery()
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-5">
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100 p-5 shadow-[0_4px_24px_rgba(139,92,246,0.08)]">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-900">Leads Recentes (24h)</h2>
-        <Link href="/leads" className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+        <h2 className="text-sm font-bold text-gray-900">Leads Recentes (24h)</h2>
+        <Link href="/leads" className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
           Ver todos <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
@@ -35,15 +35,15 @@ export function RecentLeads() {
             <Link
               key={lead.id}
               href={`/leads/${lead.id}`}
-              className="flex items-center gap-3 py-3 hover:bg-gray-50 -mx-2 px-2 rounded-lg transition-colors group"
+              className="flex items-center gap-3 py-3 hover:bg-purple-50 -mx-2 px-2 rounded-xl transition-colors group"
             >
-              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                <span className="text-blue-700 text-xs font-bold">
+              <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                <span className="text-purple-700 text-xs font-bold">
                   {lead.nome.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">
+                <p className="text-sm font-medium text-gray-900 truncate group-hover:text-purple-600">
                   {lead.nome}
                 </p>
                 <p className="text-xs text-gray-400">{lead.area_juridica ?? 'Área não definida'}</p>

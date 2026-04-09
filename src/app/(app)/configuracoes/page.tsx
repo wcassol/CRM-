@@ -5,8 +5,12 @@ import { Settings, Users, Layers, FileText, Plug, Tag, XCircle } from 'lucide-re
 import { Topbar } from '@/components/layout/Topbar'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils/cn'
-import { UsuariosConfig } from '@/components/configuracoes/UsuariosConfig'
-import { IntegracoesConfig } from '@/components/configuracoes/IntegracoesConfig'
+import { UsuariosConfig }       from '@/components/configuracoes/UsuariosConfig'
+import { IntegracoesConfig }    from '@/components/configuracoes/IntegracoesConfig'
+import { EtapasConfig }         from '@/components/configuracoes/EtapasConfig'
+import { CamposPersonalizados } from '@/components/configuracoes/CamposPersonalizados'
+import { TiposDocumento }       from '@/components/configuracoes/TiposDocumento'
+import { MotivosPerda }         from '@/components/configuracoes/MotivosPerda'
 
 type ConfigTab = 'usuarios' | 'etapas' | 'campos' | 'documentos' | 'integracoes' | 'motivos_perda'
 
@@ -59,25 +63,14 @@ export default function ConfiguracoesPage() {
 
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'usuarios'    && <UsuariosConfig />}
-          {activeTab === 'integracoes' && <IntegracoesConfig />}
-          {activeTab === 'etapas'      && <PlaceholderConfig title="Configuração de Etapas" />}
-          {activeTab === 'campos'      && <PlaceholderConfig title="Campos Personalizados" />}
-          {activeTab === 'documentos'  && <PlaceholderConfig title="Tipos de Documento" />}
-          {activeTab === 'motivos_perda' && <PlaceholderConfig title="Motivos de Perda" />}
+          {activeTab === 'usuarios'      && <UsuariosConfig />}
+          {activeTab === 'integracoes'   && <IntegracoesConfig />}
+          {activeTab === 'etapas'        && <EtapasConfig />}
+          {activeTab === 'campos'        && <CamposPersonalizados />}
+          {activeTab === 'documentos'    && <TiposDocumento />}
+          {activeTab === 'motivos_perda' && <MotivosPerda />}
         </div>
       </main>
     </>
-  )
-}
-
-function PlaceholderConfig({ title }: { title: string }) {
-  return (
-    <div className="max-w-2xl">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">{title}</h2>
-      <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">
-        Em desenvolvimento
-      </div>
-    </div>
   )
 }

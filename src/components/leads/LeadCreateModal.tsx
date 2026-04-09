@@ -58,6 +58,7 @@ export function LeadCreateModal({ open, onClose, onSuccess }: LeadCreateModalPro
 
         {/* Form */}
         <form
+          id="lead-create-form"
           onSubmit={handleSubmit(data => create.mutate(data))}
           className="overflow-y-auto flex-1 p-6 space-y-4"
         >
@@ -142,7 +143,6 @@ export function LeadCreateModal({ open, onClose, onSuccess }: LeadCreateModalPro
             type="submit"
             form="lead-create-form"
             disabled={create.isPending}
-            onClick={handleSubmit(data => create.mutate(data))}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-60"
           >
             {create.isPending && <Loader2 className="w-4 h-4 animate-spin" />}

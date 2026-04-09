@@ -22,7 +22,7 @@ export function TasksWidget() {
   const utils = trpc.useUtils()
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-5">
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100 p-5 shadow-[0_4px_24px_rgba(139,92,246,0.08)]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-900">Tarefas Vencidas</h2>
@@ -32,7 +32,7 @@ export function TasksWidget() {
             </span>
           )}
         </div>
-        <Link href="/tarefas" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+        <Link href="/tarefas" className="text-xs text-purple-600 hover:text-purple-700 font-medium">
           Ver todas
         </Link>
       </div>
@@ -63,7 +63,7 @@ export function TasksWidget() {
                   </span>
                 </div>
                 {task.lead_nome && (
-                  <Link href={`/leads/${task.lead_id}`} className="text-xs text-blue-600 hover:underline truncate block">
+                  <Link href={`/leads/${task.lead_id}`} className="text-xs text-purple-600 hover:underline truncate block">
                     {task.lead_nome}
                   </Link>
                 )}

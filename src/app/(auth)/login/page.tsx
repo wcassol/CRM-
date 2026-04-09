@@ -46,22 +46,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.25)] overflow-hidden border border-white/50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-8 text-center">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur mb-4">
-          <Scale className="w-7 h-7 text-white" />
+      <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700 px-8 py-9 text-center relative overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/10 rounded-full" />
+        <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-purple-500/20 rounded-full" />
+
+        <div className="relative z-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
+            <Scale className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white">CRM Jurídico</h1>
+          <p className="text-purple-200 text-sm mt-1">Gestão comercial e operacional</p>
         </div>
-        <h1 className="text-2xl font-bold text-white">CRM Jurídico</h1>
-        <p className="text-blue-200 text-sm mt-1">Gestão comercial e operacional</p>
       </div>
 
       {/* Form */}
       <div className="px-8 py-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Entrar na sua conta</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Entrar na sua conta</h2>
 
         {authError && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-sm text-red-700">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {authError}
           </div>
@@ -70,7 +76,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               E-mail
             </label>
             <input
@@ -79,9 +85,9 @@ export default function LoginPage() {
               autoComplete="email"
               placeholder="seu@email.com"
               className={cn(
-                'w-full px-3 py-2.5 border rounded-lg text-sm outline-none transition-colors',
-                'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-                errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                'w-full px-4 py-2.5 border rounded-xl text-sm outline-none transition-all',
+                'focus:ring-2 focus:ring-purple-300 focus:border-purple-400',
+                errors.email ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
               )}
             />
             {errors.email && (
@@ -91,7 +97,7 @@ export default function LoginPage() {
 
           {/* Senha */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Senha
             </label>
             <div className="relative">
@@ -101,15 +107,15 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 placeholder="••••••••"
                 className={cn(
-                  'w-full px-3 py-2.5 pr-10 border rounded-lg text-sm outline-none transition-colors',
-                  'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-                  errors.password ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                  'w-full px-4 py-2.5 pr-10 border rounded-xl text-sm outline-none transition-all',
+                  'focus:ring-2 focus:ring-purple-300 focus:border-purple-400',
+                  errors.password ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'
                 )}
               />
               <button
                 type="button"
                 onClick={() => setShowPass(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-500 transition-colors"
               >
                 {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -123,10 +129,12 @@ export default function LoginPage() {
             type="submit"
             disabled={isSubmitting}
             className={cn(
-              'w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-all',
-              'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.99]',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-              'disabled:opacity-60 disabled:cursor-not-allowed',
+              'w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all mt-2',
+              'bg-gradient-to-r from-purple-600 to-purple-700 text-white',
+              'hover:from-purple-700 hover:to-purple-800 active:scale-[0.99]',
+              'shadow-[0_4px_16px_rgba(139,92,246,0.4)] hover:shadow-[0_6px_20px_rgba(139,92,246,0.5)]',
+              'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
+              'disabled:opacity-60 disabled:cursor-not-allowed disabled:shadow-none',
               'flex items-center justify-center gap-2'
             )}
           >

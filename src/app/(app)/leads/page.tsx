@@ -31,7 +31,7 @@ export default function LeadsPage() {
     <>
       <Topbar title="Leads">
         {/* View toggle */}
-        <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+        <div className="flex items-center bg-purple-50 rounded-xl p-0.5 border border-purple-100">
           <button
             onClick={() => setView('kanban')}
             className={cn(
@@ -64,14 +64,14 @@ export default function LeadsPage() {
           className={cn(
             'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
             showFilters || filterCount > 0
-              ? 'bg-blue-50 border-blue-300 text-blue-700'
-              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'bg-purple-50 border-purple-300 text-purple-700'
+              : 'bg-white border-gray-200 text-gray-600 hover:bg-purple-50'
           )}
         >
           <Filter className="w-4 h-4" />
           Filtros
           {filterCount > 0 && (
-            <span className="w-4 h-4 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            <span className="w-4 h-4 bg-purple-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
               {filterCount}
             </span>
           )}
@@ -81,7 +81,7 @@ export default function LeadsPage() {
         {canCreate && (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl text-sm font-semibold hover:from-purple-700 hover:to-purple-800 transition-all shadow-[0_4px_12px_rgba(139,92,246,0.35)]"
           >
             <Plus className="w-4 h-4" />
             Novo Lead
@@ -91,7 +91,7 @@ export default function LeadsPage() {
 
       {/* Filtros expandidos */}
       {showFilters && (
-        <div className="px-6 py-3 bg-white border-b border-gray-100">
+        <div className="px-6 py-3 bg-white/80 border-b border-purple-100 backdrop-blur-sm">
           <LeadFilters
             values={activeFilters}
             onChange={setActiveFilters}

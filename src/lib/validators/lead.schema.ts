@@ -69,7 +69,7 @@ export const LeadCreateSchema = z.object({
   prazo_sensivel:  z.boolean().default(false),
 
   // Responsável
-  responsavel_comercial_id: z.string().uuid().optional(),
+  responsavel_comercial_id: z.string().uuid().optional().or(z.literal('')).transform(v => v || undefined),
 })
 
 export type LeadCreateInput = z.infer<typeof LeadCreateSchema>
