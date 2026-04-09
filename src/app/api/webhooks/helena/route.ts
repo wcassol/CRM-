@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     .map(e => e.trim().toLowerCase())
     .filter(Boolean)
 
-  const tagsLower = tags.map((t: string) => t.toLowerCase())
+  const tagsLower: string[] = (tags as string[]).map((t: string) => t.toLowerCase())
 
   if (etiquetasConfiguradas.length > 0) {
     const temEtiquetaLead = etiquetasConfiguradas.some(e => tagsLower.includes(e))
