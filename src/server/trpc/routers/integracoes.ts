@@ -4,6 +4,15 @@ import { createTRPCRouter, adminProcedure } from '../trpc'
 
 const ChaveSchema = z.enum(['zapsign', 'asaas', 'calcom', 'n8n', 'astrea', 'zapconnecta'])
 
+const DISPLAY_NAMES: Record<string, string> = {
+  zapsign:     'ZapSign',
+  asaas:       'Asaas',
+  calcom:      'Cal.com',
+  n8n:         'n8n',
+  astrea:      'Astrea',
+  zapconnecta: 'Helena CRM (WhatsApp)',
+}
+
 export const integracoesRouter = createTRPCRouter({
 
   // Buscar configuração de uma integração
@@ -22,15 +31,6 @@ export const integracoesRouter = createTRPCRouter({
         chave: string; ativo: boolean; config: Record<string, string>
       }
     }),
-
-const DISPLAY_NAMES: Record<string, string> = {
-  zapsign:      'ZapSign',
-  asaas:        'Asaas',
-  calcom:       'Cal.com',
-  n8n:          'n8n',
-  astrea:       'Astrea',
-  zapconnecta:  'Helena CRM (WhatsApp)',
-}
 
   // Salvar/atualizar configuração
   save: adminProcedure
