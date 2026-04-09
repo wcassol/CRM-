@@ -149,11 +149,6 @@ const VIABILIDADE_LABELS: Record<string, string> = { viavel: 'Viável', inviavel
 const URGENCIA_LABELS: Record<string, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta', critica: 'Crítica' }
 const TEMPERATURA_LABELS: Record<string, string> = { frio: 'Frio', morno: 'Morno', quente: 'Quente' }
 
-// Esquema local que aceita data no formato date input
-const TriagemLocalSchema = LeadTriagemSchema.extend({
-  data_fato: LeadTriagemSchema.shape.data_fato,
-})
-
 function TriagemTab({ lead }: { lead: any }) {
   const { toast } = useToast()
   const utils = trpc.useUtils()
@@ -168,7 +163,7 @@ function TriagemTab({ lead }: { lead: any }) {
   })
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<LeadTriagemInput>({
-    resolver: zodResolver(TriagemLocalSchema),
+    resolver: zodResolver(LeadTriagemSchema),
     defaultValues: {
       id:                     lead.id,
       area_juridica:          lead.area_juridica ?? '',
