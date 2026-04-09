@@ -10,7 +10,8 @@ const TIPO_COLORS: Record<string, string> = { text: 'bg-blue-50 text-blue-700', 
 const AREAS = ['','previdenciario','trabalhista','consumidor','civel','criminal','familia','tributario','empresarial']
 const AREA_LABELS: Record<string, string> = { '': 'Todas as áreas', previdenciario: 'Previdenciário', trabalhista: 'Trabalhista', consumidor: 'Consumidor', civel: 'Cível', criminal: 'Criminal', familia: 'Família', tributario: 'Tributário', empresarial: 'Empresarial' }
 
-const defaultForm = { nome: '', label: '', tipo: 'text' as const, area_juridica: '', obrigatorio: false, opcoes: '' }
+type CampoTipo = 'text' | 'number' | 'date' | 'boolean' | 'select'
+const defaultForm = { nome: '', label: '', tipo: 'text' as CampoTipo, area_juridica: '', obrigatorio: false, opcoes: '' }
 
 export function CamposPersonalizados() {
   const { toast } = useToast()
