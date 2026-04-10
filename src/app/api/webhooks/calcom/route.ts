@@ -13,10 +13,19 @@ export const dynamic = 'force-dynamic'
 //   - MEETING_ENDED        → registrar reunião como realizada
 //
 // Segurança: HMAC-SHA256 no header X-Cal-Signature-256
+//            Secret lido do banco (integrations.config.webhook_secret)
+//            com fallback p/ env var CALCOM_WEBHOOK_SECRET
 //
-// IMPORTANTE: o lead_id deve ser passado como campo customizado da reserva
-// (responses.lead_id.value) ou como parte do título do evento.
-// Configure no Cal.com: Event Type → Booking Questions → add "lead_id" field.
+// Lookup de lead (em ordem):
+//   1. Campo customizado responses.lead_id (UUID)
+//   2. E-mail do attendee
+//   3. Telefone do attendee (se enviado como booking question)
+//   4. Sem vínculo — appointment criado sem lead_id para vinculação manual
+//
+// Configuração no Cal.com:
+//   Event Type → Webhooks → Add Webhook
+//   URL: https://crm.zapconnecta.com/api/webhooks/calcom
+//   Eventos: BOOKING_CREATED, BOOKING_RESCHEDULED, BOOKING_CANCELLED, MEETING_ENDED
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -46,6 +55,8 @@ const CalcomWebhookSchema = z.object({
       name:     z.string(),
       email:    z.string(),
       timeZone: z.string().optional(),
+      // Cal.com pode incluir phone se configurado como booking question
+      phone:    z.string().optional().nullable(),
     })).default([]),
     organizer:  z.object({
       name:  z.string(),
@@ -55,7 +66,7 @@ const CalcomWebhookSchema = z.object({
       label: z.string(),
       value: z.union([z.string(), z.array(z.string())]),
     })).optional().nullable(),
-    rescheduleUid: z.string().optional().nullable(),
+    rescheduleUid:      z.string().optional().nullable(),
     cancellationReason: z.string().optional().nullable(),
   }),
 })
@@ -68,22 +79,35 @@ function extractLeadId(responses?: Record<string, { label: string; value: string
   const field = responses['lead_id'] ?? responses['leadId'] ?? responses['crm_lead_id']
   if (!field) return null
   const val = Array.isArray(field.value) ? field.value[0] : field.value
-  // Validar UUID básico
   return /^[0-9a-f-]{36}$/i.test(val ?? '') ? val ?? null : null
+}
+
+/** Calcula duração em minutos entre dois ISO strings */
+function calcDuracaoMin(start: string, end: string): number {
+  return Math.max(15, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000))
 }
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
+  const supabase = createAdminSupabase()
+  const db       = supabase as any
 
-  // 1. Validar assinatura HMAC
+  // 1. Ler webhook_secret do banco (config UI), com fallback p/ env var
+  const { data: integConfig } = await db
+    .from('integrations')
+    .select('config')
+    .eq('nome', 'calcom')
+    .single()
+
+  const secret = integConfig?.config?.webhook_secret ?? process.env.CALCOM_WEBHOOK_SECRET ?? ''
+
+  // 2. Validar assinatura HMAC
   const signature = req.headers.get('x-cal-signature-256') ?? ''
-  const secret    = process.env.CALCOM_WEBHOOK_SECRET ?? ''
-
   if (secret && !CalcomClient.validateWebhookSignature(rawBody, signature, secret)) {
     return NextResponse.json({ error: 'Assinatura inválida' }, { status: 401 })
   }
 
-  // 2. Parsear payload
+  // 3. Parsear payload
   let input: CalcomWebhook
   try {
     input = CalcomWebhookSchema.parse(JSON.parse(rawBody))
@@ -94,7 +118,6 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const supabase   = createAdminSupabase()
   const webhookSvc = new WebhookService(supabase)
   const notifySvc  = new NotificationService(supabase)
   const auditSvc   = new AuditService(supabase)
@@ -105,7 +128,7 @@ export async function POST(req: NextRequest) {
     `${input.payload.uid}:${input.createdAt}`
   )
 
-  // 3. Idempotência
+  // 4. Idempotência
   const { isNew, queue_id } = await webhookSvc.enqueue({
     source:          'calcom',
     event_type:      input.triggerEvent,
@@ -118,14 +141,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const db        = supabase as any
     const booking   = input.payload
-    const leadId    = extractLeadId(booking.responses)
     const attendee  = booking.attendees[0]
+    const leadId    = extractLeadId(booking.responses)
+    const duracaoMin = calcDuracaoMin(booking.startTime, booking.endTime)
 
     switch (input.triggerEvent) {
+
       case 'BOOKING_CREATED': {
-        // Se não temos lead_id no campo customizado, tentar encontrar pelo e-mail do attendee
+        // Resolver lead_id: campo customizado → email → telefone
         let resolvedLeadId = leadId
 
         if (!resolvedLeadId && attendee?.email) {
@@ -138,20 +162,34 @@ export async function POST(req: NextRequest) {
           resolvedLeadId = lead?.id ?? null
         }
 
+        if (!resolvedLeadId && attendee?.phone) {
+          const tel = attendee.phone.replace(/\D/g, '')
+          if (tel) {
+            const { data: lead } = await db
+              .from('leads')
+              .select('id')
+              .eq('telefone', tel)
+              .is('deleted_at', null)
+              .maybeSingle()
+            resolvedLeadId = lead?.id ?? null
+          }
+        }
+
+        const apptBase = {
+          calcom_uid:         booking.uid,
+          titulo:             booking.title,
+          data_hora:          booking.startTime,
+          duracao_min:        duracaoMin,
+          link_meet:          booking.meetingUrl ?? null,
+          status:             'agendada' as const,
+          participante_nome:  attendee?.name ?? null,
+          participante_email: attendee?.email ?? null,
+          criado_por:         null,
+        }
+
         if (!resolvedLeadId) {
-          // Sem lead_id — criar appointment sem vínculo (será vinculado manualmente)
-          await db.from('appointments').insert({
-            lead_id:        null as any,  // tabela pode aceitar NULL temporariamente
-            calcom_uid:     booking.uid,
-            titulo:         booking.title,
-            data_hora:      booking.startTime,
-            data_hora_fim:  booking.endTime,
-            link_meet:      booking.meetingUrl ?? null,
-            status:         'agendada',
-            participante_nome:  attendee?.name ?? null,
-            participante_email: attendee?.email ?? null,
-            criado_por:     null,
-          })
+          // Sem lead_id — criar appointment sem vínculo
+          await db.from('appointments').insert({ ...apptBase, lead_id: null as any })
           await webhookSvc.markDone(queue_id)
           return NextResponse.json({ ok: true, note: 'lead_id não encontrado — reunião sem vínculo' })
         }
@@ -159,38 +197,27 @@ export async function POST(req: NextRequest) {
         // Criar appointment vinculado ao lead
         const { data: appt } = await db
           .from('appointments')
-          .insert({
-            lead_id:            resolvedLeadId,
-            calcom_uid:         booking.uid,
-            titulo:             booking.title,
-            data_hora:          booking.startTime,
-            data_hora_fim:      booking.endTime,
-            link_meet:          booking.meetingUrl ?? null,
-            status:             'agendada',
-            participante_nome:  attendee?.name ?? null,
-            participante_email: attendee?.email ?? null,
-            criado_por:         null,
-          })
+          .insert({ ...apptBase, lead_id: resolvedLeadId })
           .select('id')
           .single()
 
-        // Avançar etapa do lead para reuniao_agendada (se ainda não avançou)
+        // Avançar etapa do lead para reuniao_agendada
         await db
           .from('leads')
           .update({ etapa_comercial: 'reuniao_agendada' })
           .eq('id', resolvedLeadId)
-          .in('etapa_comercial', ['novo_lead', 'triagem_concluida', 'aguardando_documentos', 'em_analise_viabilidade'])
+          .in('etapa_comercial', ['novo_lead', 'triagem_iniciada', 'triagem_concluida', 'aguardando_documentos', 'em_analise_viabilidade'])
 
         // Registrar na timeline
         await db.from('lead_interactions').insert({
           lead_id:    resolvedLeadId,
           tipo:       'reuniao',
-          conteudo:   `Reunião agendada para ${new Date(booking.startTime).toLocaleString('pt-BR')}. ${booking.meetingUrl ? `Link: ${booking.meetingUrl}` : ''}`,
+          conteudo:   `Reunião agendada para ${new Date(booking.startTime).toLocaleString('pt-BR')} (${duracaoMin} min).${booking.meetingUrl ? ` Link: ${booking.meetingUrl}` : ''}`,
           usuario_id: null,
           metadata:   { calcom_uid: booking.uid, appointment_id: appt?.id },
         })
 
-        // Notificar responsável
+        // Notificar responsável comercial
         const { data: lead } = await db
           .from('leads')
           .select('nome, responsavel_comercial_id')
@@ -202,7 +229,7 @@ export async function POST(req: NextRequest) {
             usuario_id:  lead.responsavel_comercial_id,
             tipo:        'reuniao_agendada',
             titulo:      `Reunião agendada: ${lead.nome}`,
-            mensagem:    `${new Date(booking.startTime).toLocaleString('pt-BR')} — ${booking.meetingUrl ?? 'Sem link de reunião'}`,
+            mensagem:    `${new Date(booking.startTime).toLocaleString('pt-BR')} · ${duracaoMin} min${booking.meetingUrl ? ` · ${booking.meetingUrl}` : ''}`,
             entity_type: 'lead',
             entity_id:   resolvedLeadId,
           })
@@ -213,19 +240,19 @@ export async function POST(req: NextRequest) {
           entity_id:   resolvedLeadId,
           action:      'update',
           usuario_id:  null,
-          dados_novos: { reuniao_agendada: true, calcom_uid: booking.uid },
+          dados_novos: { reuniao_agendada: true, calcom_uid: booking.uid, appointment_id: appt?.id },
         })
         break
       }
 
       case 'BOOKING_RESCHEDULED': {
-        // Atualizar data/hora da reunião
         const { data: appt } = await db
           .from('appointments')
           .update({
-            data_hora:     booking.startTime,
-            data_hora_fim: booking.endTime,
-            link_meet:     booking.meetingUrl ?? null,
+            data_hora:   booking.startTime,
+            duracao_min: duracaoMin,
+            link_meet:   booking.meetingUrl ?? null,
+            status:      'reagendada',
           })
           .eq('calcom_uid', booking.uid)
           .select('lead_id')
@@ -235,7 +262,7 @@ export async function POST(req: NextRequest) {
           await db.from('lead_interactions').insert({
             lead_id:    appt.lead_id,
             tipo:       'sistema',
-            conteudo:   `Reunião reagendada para ${new Date(booking.startTime).toLocaleString('pt-BR')}.`,
+            conteudo:   `Reunião reagendada para ${new Date(booking.startTime).toLocaleString('pt-BR')} (${duracaoMin} min).`,
             usuario_id: null,
             metadata:   { calcom_uid: booking.uid, reschedule_uid: booking.rescheduleUid },
           })
@@ -260,7 +287,6 @@ export async function POST(req: NextRequest) {
             metadata:   { calcom_uid: booking.uid },
           })
 
-          // Notificar responsável
           const { data: lead } = await db
             .from('leads')
             .select('nome, responsavel_comercial_id')
@@ -282,7 +308,6 @@ export async function POST(req: NextRequest) {
       }
 
       case 'MEETING_ENDED': {
-        // Reunião encerrada — marcar como realizada e avançar etapa
         const { data: appt } = await db
           .from('appointments')
           .update({ status: 'realizada' })
@@ -291,7 +316,6 @@ export async function POST(req: NextRequest) {
           .maybeSingle()
 
         if (appt?.lead_id) {
-          // Avançar etapa para reuniao_realizada
           await db
             .from('leads')
             .update({ etapa_comercial: 'reuniao_realizada' })
@@ -301,7 +325,7 @@ export async function POST(req: NextRequest) {
           await db.from('lead_interactions').insert({
             lead_id:    appt.lead_id,
             tipo:       'reuniao',
-            conteudo:   `Reunião encerrada (Cal.com). Duração: ${Math.round((new Date(booking.endTime).getTime() - new Date(booking.startTime).getTime()) / 60000)} minutos.`,
+            conteudo:   `Reunião encerrada (Cal.com). Duração: ${duracaoMin} minutos.`,
             usuario_id: null,
             metadata:   { calcom_uid: booking.uid },
           })
@@ -312,6 +336,7 @@ export async function POST(req: NextRequest) {
 
     await webhookSvc.markDone(queue_id)
     return NextResponse.json({ ok: true, event: input.triggerEvent })
+
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('[webhook/calcom] Erro:', msg)

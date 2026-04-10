@@ -87,12 +87,17 @@ const INTEGRATIONS: IntegrationMeta[] = [
   {
     key:         'calcom',
     label:       'Cal.com',
-    description: 'Agendamento de reuniões e entrevistas.',
+    description: 'Agendamento de reuniões e entrevistas. Reuniões agendadas aparecem automaticamente no card do lead.',
     fields: [
-      { name: 'api_key',         label: 'API Key',        placeholder: 'cal_...',             secret: true },
-      { name: 'event_type_id',   label: 'Event Type ID',  placeholder: 'ID do tipo de evento' },
-      { name: 'webhook_secret',  label: 'Webhook Secret', secret: true },
+      { name: 'api_key',        label: 'API Key',         placeholder: 'cal_...',                        secret: true },
+      { name: 'event_type_id',  label: 'Event Type ID',   placeholder: 'ID do tipo de evento' },
+      { name: 'webhook_secret', label: 'Webhook Secret',  placeholder: 'Chave de validação HMAC',        secret: true, hint: 'Configure este mesmo valor no campo "Secret" ao criar o webhook no Cal.com' },
     ],
+    webhookInfo: {
+      url:         `${APP_URL}/api/webhooks/calcom`,
+      description: 'Configure em Cal.com: Event Type → Webhooks → Add Webhook. Selecione os 4 eventos abaixo.',
+      events:      ['BOOKING_CREATED', 'BOOKING_RESCHEDULED', 'BOOKING_CANCELLED', 'MEETING_ENDED'],
+    },
   },
   {
     key:         'n8n',
