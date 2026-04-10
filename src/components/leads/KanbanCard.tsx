@@ -33,26 +33,21 @@ export function KanbanCard({ lead, isDragOverlay }: KanbanCardProps) {
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        'bg-white rounded-xl border border-gray-100 p-3 cursor-pointer group',
+        'bg-white rounded-xl border border-gray-100 p-3 cursor-grab group',
         'hover:shadow-md hover:border-blue-200 transition-all',
-        isDragging && 'opacity-40',
-        isDragOverlay && 'shadow-xl border-blue-300',
+        isDragging && 'opacity-40 cursor-grabbing',
+        isDragOverlay && 'shadow-xl border-blue-300 cursor-grabbing',
         hasOverdueTasks && 'border-l-4 border-l-red-400',
       )}
       onClick={() => !isDragging && router.push(`/leads/${lead.id}`)}
     >
-      {/* Grip + urgency */}
+      {/* Lead name + temperature */}
       <div className="flex items-start justify-between gap-1 mb-2">
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          <button
-            {...attributes}
-            {...listeners}
-            className="text-gray-300 hover:text-gray-500 shrink-0 touch-none"
-            onClick={e => e.stopPropagation()}
-          >
-            <GripVertical className="w-3 h-3" />
-          </button>
+          <GripVertical className="w-3 h-3 text-gray-300 shrink-0" />
           <p className="text-sm font-semibold text-gray-900 truncate">{lead.nome}</p>
         </div>
         <TemperaturaBadge temperatura={lead.temperatura} />

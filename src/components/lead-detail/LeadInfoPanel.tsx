@@ -1,11 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { Edit2, Check, X, User, Briefcase } from 'lucide-react'
+import { Edit2, Check, X, User, Briefcase, Calendar, ExternalLink, Clock } from 'lucide-react'
 import { trpc } from '@/lib/trpc/client'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import type { DbLead } from '@/types/database.types'
+
+const APPT_STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  agendada:  { label: 'Agendada',   color: 'text-blue-600 bg-blue-50' },
+  reagendada:{ label: 'Reagendada', color: 'text-indigo-600 bg-indigo-50' },
+  realizada: { label: 'Realizada',  color: 'text-green-600 bg-green-50' },
+  cancelada: { label: 'Cancelada',  color: 'text-red-500 bg-red-50' },
+  faltou:    { label: 'Faltou',     color: 'text-orange-500 bg-orange-50' },
+}
 
 interface LeadInfoPanelProps {
   lead: DbLead & Record<string, any>
@@ -24,6 +32,8 @@ export function LeadInfoPanel({ lead }: LeadInfoPanelProps) {
   })
 
   const { data: users } = trpc.users.list.useQuery()
+  const { data: appointments } = trpc.appointments.byLead.useQuery(lead.id)
+  const calcomMeetings = (appointments ?? []).filter((a: any) => a.calcom_uid)
 
   function startEdit(field: string, value: string) {
     setEditing(field)
@@ -39,6 +49,51 @@ export function LeadInfoPanel({ lead }: LeadInfoPanelProps) {
 
   return (
     <div className="space-y-4">
+
+      {/* Reuniões Cal.com */}
+      {calcomMeetings.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" />
+            Reuniões (Cal.com)
+          </h3>
+          <div className="space-y-3">
+            {calcomMeetings.map((appt: any) => {
+              const s = APPT_STATUS_LABEL[appt.status] ?? { label: appt.status, color: 'text-gray-500 bg-gray-50' }
+              return (
+                <div key={appt.id} className="border border-gray-100 rounded-lg p-3 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold text-gray-800 leading-snug flex-1">{appt.titulo}</p>
+                    <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0', s.color)}>
+                      {s.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] text-gray-500">
+                    <Clock className="w-3 h-3" />
+                    {new Date(appt.data_hora).toLocaleString('pt-BR', {
+                      day: '2-digit', month: '2-digit', year: '2-digit',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                    {appt.duracao_min && <span className="ml-1">· {appt.duracao_min} min</span>}
+                  </div>
+                  {appt.link_meet && (
+                    <a
+                      href={appt.link_meet}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[11px] text-purple-600 hover:text-purple-800 font-medium"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Entrar na reunião
+                    </a>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Responsáveis */}
       <InfoCard title="Responsáveis" icon={User}>
         <InfoRow label="Comercial"

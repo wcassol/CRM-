@@ -58,11 +58,25 @@ export function LeadKanban({ filters }: LeadKanbanProps) {
 
     if (!over || active.id === over.id) return
 
-    const leadId    = active.id as string
-    const etapaNova = over.id as EtapaComercial
-    const lead      = (leads ?? []).find(l => l.id === leadId)
+    const leadId  = active.id as string
+    const lead    = (leads ?? []).find(l => l.id === leadId)
+    if (!lead) return
 
-    if (!lead || lead.etapa_comercial === etapaNova) return
+    // over.id pode ser o ID da coluna (stage.id) ou o ID de outro card (lead UUID)
+    // quando o card é solto perto de outro card, o dnd-kit retorna o ID do card alvo
+    const stageIds = new Set(ETAPAS_COMERCIAL_ORDENADAS.map(s => s.id))
+    let etapaNova: EtapaComercial
+
+    if (stageIds.has(over.id as string)) {
+      etapaNova = over.id as EtapaComercial
+    } else {
+      // Dropped near another card — resolve target stage from that card
+      const targetLead = (leads ?? []).find(l => l.id === over.id)
+      if (!targetLead) return
+      etapaNova = targetLead.etapa_comercial as EtapaComercial
+    }
+
+    if (lead.etapa_comercial === etapaNova) return
 
     // Perdas requerem fluxo com modal — não permitir drag direto para perdas
     if (['perdas'].includes(etapaNova as string)) {
